@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 
 import { type ActionState } from "@/lib/actions/form-state";
-import { getClientEnv } from "@/lib/env";
+import { getAppUrl } from "@/lib/env";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { signInSchema, signUpSchema } from "@/lib/validators/auth";
 
@@ -47,7 +47,7 @@ export async function signUpAction(
   _previousState: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  const clientEnv = getClientEnv();
+  const appUrl = getAppUrl();
   const parsed = signUpSchema.safeParse({
     email: formData.get("email"),
     fullName: formData.get("fullName"),
@@ -70,7 +70,7 @@ export async function signUpAction(
       data: {
         full_name: parsed.data.fullName,
       },
-      emailRedirectTo: `${clientEnv.NEXT_PUBLIC_APP_URL}/auth/callback`,
+      emailRedirectTo: `${appUrl}/auth/callback`,
     },
   });
 

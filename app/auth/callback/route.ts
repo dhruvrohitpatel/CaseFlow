@@ -1,10 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-import { getClientEnv } from "@/lib/env";
+import { getAppUrl } from "@/lib/env";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export async function GET(request: NextRequest) {
-  const clientEnv = getClientEnv();
+  const appUrl = getAppUrl();
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get("code");
   const next = requestUrl.searchParams.get("next") ?? "/dashboard";
@@ -14,9 +14,9 @@ export async function GET(request: NextRequest) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (!error) {
-      return NextResponse.redirect(`${clientEnv.NEXT_PUBLIC_APP_URL}${next}`);
+      return NextResponse.redirect(`${appUrl}${next}`);
     }
   }
 
-  return NextResponse.redirect(`${clientEnv.NEXT_PUBLIC_APP_URL}/login?error=oauth`);
+  return NextResponse.redirect(`${appUrl}/login?error=oauth`);
 }
