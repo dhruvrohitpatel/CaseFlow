@@ -1,9 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-import { clientEnv } from "@/lib/env";
+import { getClientEnv } from "@/lib/env";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export async function GET(request: NextRequest) {
+  const clientEnv = getClientEnv();
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get("code");
   const next = requestUrl.searchParams.get("next") ?? "/dashboard";

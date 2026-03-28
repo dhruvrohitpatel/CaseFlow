@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 
 import { type ActionState } from "@/lib/actions/form-state";
-import { clientEnv } from "@/lib/env";
+import { getClientEnv } from "@/lib/env";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { signInSchema, signUpSchema } from "@/lib/validators/auth";
 
@@ -47,6 +47,7 @@ export async function signUpAction(
   _previousState: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
+  const clientEnv = getClientEnv();
   const parsed = signUpSchema.safeParse({
     email: formData.get("email"),
     fullName: formData.get("fullName"),

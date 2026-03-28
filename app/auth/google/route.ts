@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 
-import { clientEnv } from "@/lib/env";
+import { getClientEnv } from "@/lib/env";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export async function GET() {
+  const clientEnv = getClientEnv();
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase.auth.signInWithOAuth({
     options: {
