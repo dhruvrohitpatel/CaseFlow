@@ -2,16 +2,21 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
 import { CreateClientForm } from "@/components/forms/create-client-form";
+import { getActiveCustomFieldDefinitions } from "@/lib/custom-fields";
 import { requireRole } from "@/lib/auth";
 
 const outlineLinkClassName =
   "inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-stone-200 bg-white px-2.5 text-sm font-medium text-stone-900 transition-colors hover:bg-stone-100";
 
 export default async function NewClientPage() {
-  await requireRole(["admin", "staff"]);
+  const { supabase } = await requireRole(["admin", "staff"]);
+  const customFieldDefinitions = await getActiveCustomFieldDefinitions(
+    supabase,
+    "client",
+  );
 
   return (
-    <div className="space-y-6">
+      <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-semibold tracking-tight text-stone-950">New client</h1>
@@ -24,7 +29,7 @@ export default async function NewClientPage() {
           Back to clients
         </Link>
       </div>
-      <CreateClientForm />
+      <CreateClientForm customFieldDefinitions={customFieldDefinitions} />
     </div>
   );
 }

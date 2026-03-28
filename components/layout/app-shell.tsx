@@ -16,14 +16,17 @@ type AppShellProps = {
   profile: Profile;
 };
 
-const navItems = [
-  { href: "/dashboard", label: "Dashboard" },
-  { href: "/clients", label: "Clients" },
-  { href: "/clients/new", label: "New client" },
-];
-
 export function AppShell({ children, profile }: AppShellProps) {
   const pathname = usePathname();
+  const navItems = [
+    { href: "/dashboard", label: "Dashboard" },
+    { href: "/clients", label: "Clients" },
+    { href: "/clients/new", label: "New client" },
+    { href: "/schedule", label: "Schedule" },
+    ...(profile.role === "admin"
+      ? [{ href: "/admin", label: "Admin" }]
+      : []),
+  ];
 
   return (
     <div className="min-h-screen bg-stone-100">

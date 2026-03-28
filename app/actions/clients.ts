@@ -1,9 +1,15 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 
 import { type ActionState } from "@/lib/actions/form-state";
 import { requireRole } from "@/lib/auth";
+import {
+  getActiveCustomFieldDefinitions,
+  parseCustomFieldFormValues,
+  replaceClientCustomFieldValues,
+} from "@/lib/custom-fields";
 import { createClientSchema } from "@/lib/validators/client";
 
 function getFieldErrors(error: {
@@ -26,6 +32,7 @@ export async function createClientAction(
     preferredName: formData.get("preferredName"),
     pronouns: formData.get("pronouns"),
     referralSource: formData.get("referralSource"),
+    status: formData.get("status"),
   });
 
   if (!parsed.success) {
@@ -37,6 +44,17 @@ export async function createClientAction(
   }
 
   const { profile, supabase } = await requireRole(["admin", "staff"]);
+  const definitions = await getActiveCustomFieldDefinitions(supabase, "client");
+  const customFields = parseCustomFieldFormValues(definitions, formData);
+
+  if (!customFields.success) {
+    return {
+      fieldErrors: customFields.fieldErrors,
+      message: "Fix the highlighted custom fields and try again.",
+      status: "error",
+    };
+  }
+
   const { data, error } = await supabase
     .from("clients")
     .insert({
@@ -50,8 +68,9 @@ export async function createClientAction(
       preferred_name: parsed.data.preferredName,
       pronouns: parsed.data.pronouns,
       referral_source: parsed.data.referralSource,
+      status: parsed.data.status,
     })
-    .select("client_id")
+    .select("id, client_id")
     .single();
 
   if (error) {
@@ -61,5 +80,37 @@ export async function createClientAction(
     };
   }
 
+  await replaceClientCustomFieldValues(supabase, data.id, customFields.values);
+
   redirect(`/clients/${data.client_id}?created=1`);
+}
+
+export async function updateClientStatusAction(formData: FormData) {
+  const parsed = createClientSchema.pick({
+    status: true,
+  }).safeParse({
+    status: formData.get("status"),
+  });
+
+  const clientPublicId = String(formData.get("clientPublicId") ?? "").trim();
+
+  if (!parsed.success || !clientPublicId) {
+    redirect(`/clients/${clientPublicId || ""}?error=status`);
+  }
+
+  const { supabase } = await requireRole(["admin", "staff"]);
+  const { error } = await supabase
+    .from("clients")
+    .update({
+      status: parsed.data.status,
+    })
+    .eq("client_id", clientPublicId);
+
+  if (error) {
+    redirect(`/clients/${clientPublicId}?error=status`);
+  }
+
+  revalidatePath(`/clients/${clientPublicId}`);
+  revalidatePath("/dashboard");
+  redirect(`/clients/${clientPublicId}?updated=1`);
 }

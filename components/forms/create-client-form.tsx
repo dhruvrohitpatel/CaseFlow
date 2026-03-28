@@ -3,18 +3,26 @@
 import { useActionState } from "react";
 
 import { createClientAction } from "@/app/actions/clients";
+import { DynamicFields } from "@/components/forms/dynamic-fields";
 import { FormMessage } from "@/components/forms/form-message";
 import { SubmitButton } from "@/components/forms/submit-button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { initialActionState } from "@/lib/actions/form-state";
+import type { CustomFieldDefinition } from "@/lib/custom-fields";
 
 const fieldErrorClassName = "text-sm text-red-700";
 const nativeSelectClassName =
   "flex h-10 w-full rounded-lg border border-stone-200 bg-white px-3 text-sm text-stone-950 outline-none transition-colors focus:border-stone-400";
 
-export function CreateClientForm() {
+type CreateClientFormProps = {
+  customFieldDefinitions?: CustomFieldDefinition[];
+};
+
+export function CreateClientForm({
+  customFieldDefinitions = [],
+}: CreateClientFormProps) {
   const [state, formAction] = useActionState(createClientAction, initialActionState);
 
   return (
@@ -98,8 +106,26 @@ export function CreateClientForm() {
               <p className={fieldErrorClassName}>{state.fieldErrors.referralSource[0]}</p>
             ) : null}
           </div>
+          <div className="space-y-2">
+            <Label htmlFor="status">Client status</Label>
+            <select className={nativeSelectClassName} defaultValue="active" id="status" name="status">
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+              <option value="archived">Archived</option>
+            </select>
+            {state.fieldErrors?.status ? (
+              <p className={fieldErrorClassName}>{state.fieldErrors.status[0]}</p>
+            ) : null}
+          </div>
+          <DynamicFields
+            definitions={customFieldDefinitions}
+            fieldErrors={state.fieldErrors}
+          />
           <div className="md:col-span-2">
-            <FormMessage message={state.message} />
+            <FormMessage
+              message={state.message}
+              tone={state.status === "success" ? "success" : "error"}
+            />
           </div>
           <div className="md:col-span-2 flex justify-end">
             <SubmitButton pendingLabel="Creating client...">Create client</SubmitButton>

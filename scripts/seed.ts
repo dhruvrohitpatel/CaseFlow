@@ -51,6 +51,7 @@ const DEMO_CLIENTS: Database["public"]["Tables"]["clients"]["Insert"][] = [
     pronouns: "she/her",
     housing_status: "Temporary housing",
     referral_source: "Community partner",
+    status: "active",
   },
   {
     client_id: "CF-DEMO-002",
@@ -63,6 +64,7 @@ const DEMO_CLIENTS: Database["public"]["Tables"]["clients"]["Insert"][] = [
     pronouns: "they/them",
     housing_status: "Stable housing",
     referral_source: "Walk-in",
+    status: "active",
   },
   {
     client_id: "CF-DEMO-003",
@@ -75,6 +77,7 @@ const DEMO_CLIENTS: Database["public"]["Tables"]["clients"]["Insert"][] = [
     pronouns: "she/her",
     housing_status: "Staying with family or friends",
     referral_source: "Hospital",
+    status: "active",
   },
   {
     client_id: "CF-DEMO-004",
@@ -87,6 +90,7 @@ const DEMO_CLIENTS: Database["public"]["Tables"]["clients"]["Insert"][] = [
     pronouns: "he/him",
     housing_status: "Unsheltered",
     referral_source: "Hotline",
+    status: "active",
   },
   {
     client_id: "CF-DEMO-005",
@@ -99,6 +103,7 @@ const DEMO_CLIENTS: Database["public"]["Tables"]["clients"]["Insert"][] = [
     pronouns: "she/her",
     housing_status: "Stable housing",
     referral_source: "School",
+    status: "inactive",
   },
   {
     client_id: "CF-DEMO-006",
@@ -111,6 +116,7 @@ const DEMO_CLIENTS: Database["public"]["Tables"]["clients"]["Insert"][] = [
     pronouns: "he/him",
     housing_status: "Temporary housing",
     referral_source: "Community partner",
+    status: "active",
   },
   {
     client_id: "CF-DEMO-007",
@@ -123,6 +129,7 @@ const DEMO_CLIENTS: Database["public"]["Tables"]["clients"]["Insert"][] = [
     pronouns: "she/her",
     housing_status: "Stable housing",
     referral_source: "Walk-in",
+    status: "active",
   },
   {
     client_id: "CF-DEMO-008",
@@ -135,6 +142,7 @@ const DEMO_CLIENTS: Database["public"]["Tables"]["clients"]["Insert"][] = [
     pronouns: "he/him",
     housing_status: "Temporary housing",
     referral_source: "Hospital",
+    status: "inactive",
   },
   {
     client_id: "CF-DEMO-009",
@@ -147,6 +155,7 @@ const DEMO_CLIENTS: Database["public"]["Tables"]["clients"]["Insert"][] = [
     pronouns: "she/her",
     housing_status: "Stable housing",
     referral_source: "Community partner",
+    status: "active",
   },
   {
     client_id: "CF-DEMO-010",
@@ -159,6 +168,46 @@ const DEMO_CLIENTS: Database["public"]["Tables"]["clients"]["Insert"][] = [
     pronouns: "he/him",
     housing_status: "Staying with family or friends",
     referral_source: "School",
+    status: "archived",
+  },
+];
+
+const CUSTOM_FIELD_DEFINITIONS: Database["public"]["Tables"]["custom_field_definitions"]["Insert"][] = [
+  {
+    entity_type: "client",
+    field_key: "program_track",
+    field_type: "select",
+    is_required: false,
+    label: "Program track",
+    select_options: ["Housing stabilization", "Food assistance", "Youth services"],
+    sort_order: 1,
+  },
+  {
+    entity_type: "client",
+    field_key: "intake_priority",
+    field_type: "number",
+    is_required: false,
+    label: "Intake priority score",
+    select_options: [],
+    sort_order: 2,
+  },
+  {
+    entity_type: "service_entry",
+    field_key: "follow_up_channel",
+    field_type: "select",
+    is_required: false,
+    label: "Follow-up channel",
+    select_options: ["Phone", "Text", "Email", "In person"],
+    sort_order: 1,
+  },
+  {
+    entity_type: "service_entry",
+    field_key: "next_step_due",
+    field_type: "date",
+    is_required: false,
+    label: "Next step due",
+    select_options: [],
+    sort_order: 2,
   },
 ];
 
@@ -263,6 +312,18 @@ async function main() {
     throw new Error(deleteClientsError.message);
   }
 
+  const { error: deleteDefinitionsError } = await supabase
+    .from("custom_field_definitions")
+    .delete()
+    .in(
+      "field_key",
+      CUSTOM_FIELD_DEFINITIONS.map((definition) => definition.field_key),
+    );
+
+  if (deleteDefinitionsError) {
+    throw new Error(deleteDefinitionsError.message);
+  }
+
   const { data: insertedClients, error: clientInsertError } = await supabase
     .from("clients")
     .insert(
@@ -327,10 +388,147 @@ async function main() {
     throw new Error(serviceEntryError.message);
   }
 
+  const { data: customFieldDefinitions, error: customFieldDefinitionError } =
+    await supabase
+      .from("custom_field_definitions")
+      .insert(
+        CUSTOM_FIELD_DEFINITIONS.map((definition) => ({
+          ...definition,
+          created_by: adminUser.id,
+        })),
+      )
+      .select("id, entity_type, field_key");
+
+  if (customFieldDefinitionError || !customFieldDefinitions) {
+    throw new Error(
+      customFieldDefinitionError?.message ?? "Could not seed custom fields.",
+    );
+  }
+
+  const definitionMap = new Map(
+    customFieldDefinitions.map((definition) => [
+      `${definition.entity_type}:${definition.field_key}`,
+      definition.id,
+    ]),
+  );
+
+  const clientCustomFieldValues = insertedClients.flatMap((client, index) => {
+    const values: Database["public"]["Tables"]["client_custom_field_values"]["Insert"][] = [];
+    const programTrackId = definitionMap.get("client:program_track");
+    const intakePriorityId = definitionMap.get("client:intake_priority");
+
+    if (programTrackId) {
+      values.push({
+        client_id: client.id,
+        definition_id: programTrackId,
+        value_text: ["Housing stabilization", "Food assistance", "Youth services"][index % 3],
+      });
+    }
+
+    if (intakePriorityId) {
+      values.push({
+        client_id: client.id,
+        definition_id: intakePriorityId,
+        value_text: String((index % 5) + 1),
+      });
+    }
+
+    return values;
+  });
+
+  if (clientCustomFieldValues.length > 0) {
+    const { error: clientFieldValueError } = await supabase
+      .from("client_custom_field_values")
+      .insert(clientCustomFieldValues);
+
+    if (clientFieldValueError) {
+      throw new Error(clientFieldValueError.message);
+    }
+  }
+
+  const { data: insertedServiceEntries, error: insertedServiceEntriesError } =
+    await supabase
+      .from("service_entries")
+      .select("id, client_id, service_date")
+      .in("client_id", insertedClients.map((client) => client.id));
+
+  if (insertedServiceEntriesError || !insertedServiceEntries) {
+    throw new Error(
+      insertedServiceEntriesError?.message ?? "Could not read seeded service entries.",
+    );
+  }
+
+  const serviceCustomFieldValues = insertedServiceEntries.flatMap((entry, index) => {
+    const values: Database["public"]["Tables"]["service_entry_custom_field_values"]["Insert"][] = [];
+    const followUpChannelId = definitionMap.get("service_entry:follow_up_channel");
+    const nextStepDueId = definitionMap.get("service_entry:next_step_due");
+
+    if (followUpChannelId) {
+      values.push({
+        definition_id: followUpChannelId,
+        service_entry_id: entry.id,
+        value_text: ["Phone", "Text", "Email", "In person"][index % 4],
+      });
+    }
+
+    if (nextStepDueId) {
+      const nextStep = new Date(`${entry.service_date}T00:00:00Z`);
+      nextStep.setDate(nextStep.getDate() + 7);
+
+      values.push({
+        definition_id: nextStepDueId,
+        service_entry_id: entry.id,
+        value_text: nextStep.toISOString().slice(0, 10),
+      });
+    }
+
+    return values;
+  });
+
+  if (serviceCustomFieldValues.length > 0) {
+    const { error: serviceFieldValueError } = await supabase
+      .from("service_entry_custom_field_values")
+      .insert(serviceCustomFieldValues);
+
+    if (serviceFieldValueError) {
+      throw new Error(serviceFieldValueError.message);
+    }
+  }
+
+  const appointments: Database["public"]["Tables"]["appointments"]["Insert"][] =
+    insertedClients.slice(0, 6).map((client, index) => {
+      const scheduledFor = new Date();
+      scheduledFor.setDate(scheduledFor.getDate() + index);
+      scheduledFor.setHours(9 + (index % 4) * 2, 0, 0, 0);
+
+      const assignedStaff = index % 2 === 0 ? adminUser : staffUser;
+
+      return {
+        client_id: client.id,
+        duration_minutes: 30 + (index % 3) * 15,
+        location: index % 2 === 0 ? "Main office" : "Phone call",
+        notes: `Upcoming check-in for ${client.full_name}. Review open tasks and confirm next service steps.`,
+        reminder_status: index % 3 === 0 ? "sent" : "pending",
+        scheduled_for: scheduledFor.toISOString(),
+        staff_member_name: assignedStaff.name,
+        staff_member_profile_id: assignedStaff.id,
+      };
+    });
+
+  const { error: appointmentError } = await supabase
+    .from("appointments")
+    .insert(appointments);
+
+  if (appointmentError) {
+    throw new Error(appointmentError.message);
+  }
+
   console.log("Seed complete.");
   console.log(`Demo users: ${DEMO_USERS.map((user) => user.email).join(", ")}`);
   console.log("Demo password: CaseFlowDemo123!");
-  console.log(`Inserted ${insertedClients.length} clients and ${serviceEntries.length} service entries.`);
+  console.log(
+    `Inserted ${insertedClients.length} clients, ${serviceEntries.length} service entries, ${appointments.length} appointments, and ${customFieldDefinitions.length} custom field definitions.`,
+  );
 }
 
 main().catch((error) => {

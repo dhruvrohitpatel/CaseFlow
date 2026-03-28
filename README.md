@@ -1,18 +1,22 @@
 # CaseFlow
 
-CaseFlow is a nonprofit client and case management MVP built for the 2026 ASU WiCS Opportunity Hack. This P0 pass focuses on a stable, demoable foundation: authentication, client registration, client search, client profiles, service logging, seed data, and Vercel-ready deployment.
+CaseFlow is a nonprofit client and case management app built for the 2026 ASU WiCS Opportunity Hack. The current repo state includes the stable P0 foundation plus the P1 admin and operations layer: CSV import/export, reporting, scheduling, configurable fields, and audit logging.
 
 ## Scope in this pass
 
 - Email/password auth with protected app routes
 - Admin and staff roles with server-side checks
-- Client registration with generated `client_id`
-- Client directory with search and newest-first ordering
-- Client profile view with demographics and reverse chronological service history
-- Service/visit logging with seeded service type defaults
-- Supabase schema, repeatable seed script, and Vercel deployment readiness
+- Client intake, search, profile view, and service logging
+- Client status tracking for active/inactive/archived reporting
+- CSV import for clients with row-level validation feedback
+- CSV export for clients and service logs
+- Dashboard reporting with KPI cards, service mix, and visit trend
+- Print-friendly report route
+- Scheduling with appointments, today view, and this-week grouped layout
+- Admin-configured custom fields for clients and service entries
+- Audit logs for clients, service entries, appointments, and field definitions
 
-P1 and P2 features are intentionally out of scope in this repo state.
+P2 AI features remain intentionally out of scope.
 
 ## Tech stack
 
@@ -27,13 +31,22 @@ P1 and P2 features are intentionally out of scope in this repo state.
 
 - `/login`
 - `/dashboard`
+- `/dashboard/print`
 - `/clients`
 - `/clients/new`
 - `/clients/[id]`
+- `/schedule`
+- `/admin`
+- `/api/templates/clients`
+- `/api/exports/clients`
+- `/api/exports/service-logs`
 
 ## Database schema
 
-The P0 schema lives in [supabase/migrations/20260328120000_initial_p0.sql](/Users/dhruvpatel/Desktop/Projects/CaseFlow/supabase/migrations/20260328120000_initial_p0.sql).
+The schema is split across:
+
+- [20260328120000_initial_p0.sql](/Users/dhruvpatel/Desktop/Projects/CaseFlow/supabase/migrations/20260328120000_initial_p0.sql)
+- [20260328150000_p1_extension.sql](/Users/dhruvpatel/Desktop/Projects/CaseFlow/supabase/migrations/20260328150000_p1_extension.sql)
 
 Core tables:
 
@@ -41,20 +54,31 @@ Core tables:
   - maps to `auth.users`
   - stores `role` as `admin` or `staff`
 - `clients`
-  - stores demographics, contact details, and generated public `client_id`
+  - stores demographics, contact details, generated public `client_id`, and explicit `status`
 - `service_types`
   - stores seeded dropdown values for service logging
 - `service_entries`
   - stores dated service history tied to clients and staff members
+- `appointments`
+  - stores scheduled visits, reminder status, location, and assigned staff member
+- `custom_field_definitions`
+  - stores admin-managed field definitions for `client` and `service_entry`
+- `client_custom_field_values`
+  - stores dynamic values for client records
+- `service_entry_custom_field_values`
+  - stores dynamic values for service logs
+- `audit_logs`
+  - stores redacted create/update/delete history for core P1 entities
 - `organization_settings`
   - single-org placeholder for future expansion
 
 Key schema behavior:
 
-- New auth users automatically create or update a `profiles` row.
-- `client_id` is generated in Postgres.
-- `updated_at` is maintained by triggers.
-- RLS is enabled for all P0 tables.
+- new auth users automatically create or update a `profiles` row
+- `client_id` is generated in Postgres
+- `updated_at` is maintained by triggers
+- audit triggers log changes without storing raw service note bodies
+- RLS is enabled for all core tables, with admin-only access for field definition writes and audit log reads
 
 ## Environment variables
 
@@ -80,7 +104,7 @@ For Vercel production, set `NEXT_PUBLIC_APP_URL` to your live domain.
 1. Create a new Supabase project.
 2. In `Authentication -> Providers`, leave email/password enabled.
 3. For the smoothest hackathon flow, disable email confirmation in `Authentication -> Providers -> Email`.
-4. Run the SQL in [supabase/migrations/20260328120000_initial_p0.sql](/Users/dhruvpatel/Desktop/Projects/CaseFlow/supabase/migrations/20260328120000_initial_p0.sql).
+4. Apply both migration files in `supabase/migrations/` in timestamp order.
 5. Copy the project URL, anon key, and service role key into `.env.local`.
 
 Optional Google auth:
@@ -91,7 +115,7 @@ Optional Google auth:
    - `https://your-production-domain/auth/callback`
 3. Add your Google client ID and secret in Supabase.
 
-If Google auth is not configured, email/password auth still works and remains the default P0 path.
+If Google auth is not configured, email/password auth still works and remains the default path.
 
 ## Local development
 
@@ -101,7 +125,7 @@ Install dependencies:
 pnpm install
 ```
 
-Seed the database after the migration has been applied:
+Seed the database after the migrations have been applied:
 
 ```bash
 pnpm seed
@@ -128,7 +152,12 @@ Password for both:
 CaseFlowDemo123!
 ```
 
-The admin user gets the `admin` role. The staff user gets the `staff` role.
+The seed also creates:
+
+- 10 demo clients
+- 30 demo service entries
+- 6 upcoming appointments
+- 4 custom field definitions with sample values
 
 ## Exact testing checklist
 
@@ -147,18 +176,39 @@ pnpm dev
 Then verify in the browser:
 
 1. Sign in with `admin@caseflow.demo`.
-2. Confirm `/dashboard` loads and `/login` redirects away when authenticated.
-3. Sign out and confirm protected pages redirect back to `/login`.
-4. Sign in again and open `/clients`.
-5. Search for seeded clients by full name.
-6. Open a client profile and confirm demographics render at the top.
-7. Confirm service history is shown newest first.
+2. Confirm `/dashboard` loads with:
+   - total active clients
+   - services this week
+   - services this month
+   - services this quarter
+3. Confirm the service mix bar chart and visit trend chart render.
+4. Open `/dashboard/print` and confirm it loads without the main app shell.
+5. Download:
+   - `/api/templates/clients`
+   - `/api/exports/clients`
+   - `/api/exports/service-logs`
+6. Open `/clients` and search for a seeded client by name.
+7. Open a client profile and confirm:
+   - demographics render
+   - client status is visible
+   - custom client fields render
+   - service history is newest first
+   - custom service-entry fields render when present
 8. Open `/clients/new` and create a new client.
-9. Confirm a generated `client_id` is shown on the profile page after create.
-10. Add a new service entry to that client.
-11. Confirm the new entry appears at the top of the service history.
-12. Sign in with `staff@caseflow.demo` and confirm the app still works.
-13. Confirm the admin-only setup card appears for the admin user and not for the staff user.
+9. Confirm the generated `client_id` is shown on the profile page after create.
+10. Add a new service entry and confirm it appears at the top of the history.
+11. Open `/schedule` and confirm:
+   - the create-appointment form works
+   - today view shows same-day appointments
+   - the week view groups appointments by day
+12. Open `/admin` as the admin user and confirm:
+   - CSV import form appears
+   - custom field management appears
+   - audit log entries appear
+13. Add a custom client field in `/admin`, then open `/clients/new` and confirm the field renders.
+14. Sign in with `staff@caseflow.demo`.
+15. Confirm staff can use dashboard, clients, and schedule.
+16. Confirm staff does not see the `Admin` nav item and cannot access `/admin`.
 
 ## Deploy to Vercel
 
@@ -177,29 +227,34 @@ Then verify in the browser:
    - search client
    - open client profile
    - log service entry
+   - create appointment
+   - access admin page as admin
+   - export a CSV
 
 ## Project structure
 
 - `app/`
   - App Router pages, layouts, route handlers, and server actions
 - `components/`
-  - reusable forms, layout pieces, and shadcn UI primitives
+  - reusable forms, dashboard pieces, layout pieces, and UI primitives
 - `lib/`
-  - env validation, auth/session helpers, Supabase clients, validators, and types
+  - env validation, auth/session helpers, Supabase helpers, validators, reporting, CSV parsing, scheduling, and custom-field utilities
 - `supabase/migrations/`
-  - SQL schema for P0
+  - SQL schema for P0 and P1
 - `scripts/seed.ts`
   - repeatable demo data script
 
-## Not built yet
+## Deferred intentionally
 
-- Configurable custom fields
-- Scheduling and appointments
-- Audit logs
-- Document uploads
+- reminder delivery by email or SMS
+- recurring appointments or drag-and-drop calendar UX
+- PDF generation
+- custom-field CSV mapping
+- advanced chart drilldowns or complex interactive filtering
+- document uploads
 - OCR or photo-to-intake flows
-- Semantic search
-- Client summaries
-- Voice-to-note workflows
-- Multi-org support
-- Admin management UI beyond the minimal setup guidance in the dashboard
+- semantic search
+- client summaries
+- voice-to-note workflows
+- multi-org support
+- all P2 AI features

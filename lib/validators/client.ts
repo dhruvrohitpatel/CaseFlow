@@ -39,4 +39,5 @@ export const createClientSchema = z.object({
   preferredName: optionalText,
   pronouns: optionalText,
   referralSource: z.string().trim().min(1, "Select a referral source."),
+  status: z.enum(["active", "inactive", "archived"]).default("active"),
 });
