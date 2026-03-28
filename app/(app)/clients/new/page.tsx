@@ -3,8 +3,9 @@ import Link from "next/link";
 
 import { CreateClientForm } from "@/components/forms/create-client-form";
 import { requireRole } from "@/lib/auth";
-import { buttonVariants } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+
+const outlineLinkClassName =
+  "inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-stone-200 bg-white px-2.5 text-sm font-medium text-stone-900 transition-colors hover:bg-stone-100";
 
 export default async function NewClientPage() {
   await requireRole(["admin", "staff"]);
@@ -18,10 +19,7 @@ export default async function NewClientPage() {
             Create a client record with core contact and demographic details.
           </p>
         </div>
-        <Link
-          className={cn(buttonVariants({ variant: "outline" }), "inline-flex")}
-          href="/clients"
-        >
+        <Link className={outlineLinkClassName} href="/clients">
           <ArrowLeft className="size-4" />
           Back to clients
         </Link>

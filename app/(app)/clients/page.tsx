@@ -1,11 +1,15 @@
 import Link from "next/link";
 import { Search, UserRoundPlus } from "lucide-react";
 
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireRole } from "@/lib/auth";
-import { cn } from "@/lib/utils";
+
+const primaryLinkClassName =
+  "inline-flex h-8 items-center justify-center gap-1.5 rounded-lg bg-stone-900 px-2.5 text-sm font-medium text-white transition-colors hover:bg-stone-800";
+const ghostLinkClassName =
+  "inline-flex h-7 items-center justify-center rounded-lg px-2.5 text-[0.8rem] font-medium text-stone-700 transition-colors hover:bg-stone-100 hover:text-stone-950";
 
 type ClientsPageProps = {
   searchParams: Promise<{
@@ -42,7 +46,7 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
             Search by name, review recent records, and open each client profile.
           </p>
         </div>
-        <Link className={cn(buttonVariants(), "inline-flex")} href="/clients/new">
+        <Link className={primaryLinkClassName} href="/clients/new">
           <UserRoundPlus className="size-4" />
           New client
         </Link>
@@ -93,10 +97,7 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
                       <TableCell className="text-stone-600">{client.phone ?? "Not provided"}</TableCell>
                       <TableCell className="text-stone-600">{client.preferred_language}</TableCell>
                       <TableCell className="text-right">
-                        <Link
-                          className={cn(buttonVariants({ size: "sm", variant: "ghost" }), "inline-flex")}
-                          href={`/clients/${client.client_id}`}
-                        >
+                        <Link className={ghostLinkClassName} href={`/clients/${client.client_id}`}>
                           View profile
                         </Link>
                       </TableCell>

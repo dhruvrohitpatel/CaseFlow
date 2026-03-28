@@ -1,10 +1,13 @@
 import Link from "next/link";
 import { AlertTriangle, ArrowRight, ClipboardList, Users } from "lucide-react";
 
-import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireCurrentSession, requireRole } from "@/lib/auth";
-import { cn } from "@/lib/utils";
+
+const primaryLinkClassName =
+  "inline-flex h-8 items-center justify-center gap-1.5 rounded-lg bg-stone-900 px-2.5 text-sm font-medium text-white transition-colors hover:bg-stone-800";
+const outlineLinkClassName =
+  "inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-stone-200 bg-white px-2.5 text-sm font-medium text-stone-900 transition-colors hover:bg-stone-100";
 
 async function AdminSetupCard() {
   await requireRole(["admin"]);
@@ -95,10 +98,7 @@ export default async function DashboardPage({
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Link
-              className={cn(buttonVariants(), "inline-flex")}
-              href="/clients/new"
-            >
+            <Link className={primaryLinkClassName} href="/clients/new">
               Open intake form
               <ArrowRight className="size-4" />
             </Link>
@@ -112,10 +112,7 @@ export default async function DashboardPage({
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Link
-              className={cn(buttonVariants({ variant: "outline" }), "inline-flex")}
-              href="/clients"
-            >
+            <Link className={outlineLinkClassName} href="/clients">
               Go to clients
               <ArrowRight className="size-4" />
             </Link>
