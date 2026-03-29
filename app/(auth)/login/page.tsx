@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 
 import { LoginForm } from "@/components/forms/login-form";
 import { Card, CardContent } from "@/components/ui/card";
-import { getCurrentSession } from "@/lib/auth";
+import { getCurrentSession, resolvePostAuthRedirectPath } from "@/lib/auth";
 import { getOrganizationSettings, getSupportHref } from "@/lib/organization-settings";
 
 function resolveError(error?: string) {
@@ -34,7 +34,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   ]);
 
   if (session) {
-    redirect("/dashboard");
+    redirect(await resolvePostAuthRedirectPath(session.profile.role));
   }
 
   const errorMessage = resolveError(params.error);

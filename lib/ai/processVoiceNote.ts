@@ -1,8 +1,4 @@
-import OpenAI from 'openai';
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+import OpenAI from "openai";
 
 const SERVICE_TYPES = [
   'Therapy',
@@ -14,20 +10,28 @@ const SERVICE_TYPES = [
 ];
 
 export async function processVoiceNote(audioBlob: Blob) {
-  console.log('🎤 Transcribing with Whisper...');
-  
-  const audioFile = new File([audioBlob], 'audio.webm', { type: 'audio/webm' });
-  
+  const apiKey = process.env.OPENAI_API_KEY?.trim();
+
+  if (!apiKey) {
+    throw new Error("OPENAI_API_KEY is not configured.");
+  }
+
+  const openai = new OpenAI({ apiKey });
+
+  console.log("🎤 Transcribing with Whisper...");
+
+  const audioFile = new File([audioBlob], "audio.webm", { type: "audio/webm" });
+
   const transcription = await openai.audio.transcriptions.create({
     file: audioFile,
-    model: 'whisper-1',
-    language: 'en',
+    model: "whisper-1",
+    language: "en",
   });
 
   const transcript = transcription.text;
-  console.log('✅ Transcript:', transcript.substring(0, 100) + '...');
+  console.log("✅ Transcript:", transcript.substring(0, 100) + "...");
 
-  console.log('🧠 Structuring with GPT-4o...');
+  console.log("🧠 Structuring with GPT-4o...");
 
   const systemPrompt = `You are a clinical case note assistant. Structure case manager notes into clean JSON.
 
@@ -42,32 +46,32 @@ Extract these fields from the transcript:
 Return ONLY valid JSON, no markdown.`;
 
   const response = await openai.chat.completions.create({
-    model: 'gpt-4o-mini',
+    model: "gpt-4o-mini",
     max_tokens: 500,
     messages: [
       {
-        role: 'system',
+        role: "system",
         content: systemPrompt,
       },
       {
-        role: 'user',
+        role: "user",
         content: `Structure this case note:\n\n${transcript}`,
       },
     ],
   });
 
-  const content = response.choices[0].message.content || '';
-  
+  const content = response.choices[0].message.content || "";
+
   try {
     const structured = JSON.parse(content);
-    console.log('✅ Structured');
+    console.log("✅ Structured");
     return {
       transcript,
       structured,
       timestamp: new Date().toISOString(),
     };
   } catch (error) {
-    console.error('Failed to parse:', content);
-    throw new Error('Failed to parse GPT response');
+    console.error("Failed to parse:", content);
+    throw new Error("Failed to parse GPT response");
   }
 }

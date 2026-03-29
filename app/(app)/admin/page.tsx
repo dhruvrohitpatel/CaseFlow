@@ -15,7 +15,6 @@ import { CustomFieldDefinitionForm } from "@/components/forms/custom-field-defin
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { PageErrorState } from "@/components/ui/page-error-state";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { getAllCustomFieldDefinitions } from "@/lib/custom-fields";
 import { requireRole } from "@/lib/auth";
@@ -58,23 +57,9 @@ export default async function AdminPage({
     auditQuery = auditQuery.eq("entity_type", entityFilter);
   }
 
-  const [definitionsResult, settingsResult, { data: auditLogs, error: auditError }] = await Promise.all([
-    getAllCustomFieldDefinitions(supabase)
-      .then((data) => ({ data, error: null }))
-      .catch((error: unknown) => ({
-        data: [],
-        error:
-          error instanceof Error
-            ? error.message
-            : "Custom field definitions could not be loaded.",
-      })),
-    getOrganizationSettings()
-      .then((data) => ({ data, error: null }))
-      .catch((error: unknown) => ({
-        data: null,
-        error:
-          error instanceof Error ? error.message : "Workspace settings could not be loaded.",
-      })),
+  const [definitions, settings, { data: auditLogs, error: auditError }] = await Promise.all([
+    getAllCustomFieldDefinitions(supabase),
+    getOrganizationSettings(),
     auditQuery,
   ]);
 
@@ -93,15 +78,13 @@ export default async function AdminPage({
       .order("full_name", { ascending: true }),
   ]);
 
-  const pageError =
-    settingsResult.error ??
-    definitionsResult.error ??
-    auditError?.message ??
-    accessEntriesError?.message ??
-    clientsError?.message ??
-    null;
-  const definitions = definitionsResult.data;
-  const settings = settingsResult.data;
+  if (auditError || accessEntriesError || clientsError) {
+    throw new Error(
+      auditError?.message ??
+        accessEntriesError?.message ??
+        clientsError?.message,
+    );
+  }
 
   const clientLabelById = new Map(
     (clients ?? []).map((client) => [client.id, `${client.full_name} (${client.client_id})`]),
@@ -118,7 +101,7 @@ export default async function AdminPage({
         id: client.id,
         label: `${client.full_name} (${client.client_id})`,
       })) ?? [];
-  const setupComplete = settings ? isSetupComplete(settings) : false;
+  const setupComplete = isSetupComplete(settings);
 
   return (
     <div className="space-y-6">
@@ -152,9 +135,6 @@ export default async function AdminPage({
           We could not update that approved access entry. Try again.
         </div>
       ) : null}
-      {pageError ? (
-        <PageErrorState description={pageError} title="Some admin data is unavailable." />
-      ) : null}
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
@@ -164,7 +144,7 @@ export default async function AdminPage({
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Link className={outlineLinkClassName} href="/setup">
+          <Link className={outlineLinkClassName} href="/setup" prefetch={false}>
             {setupComplete ? "Reopen setup guide" : "Open setup guide"}
           </Link>
           <Link className={outlineLinkClassName} href="/dashboard/customize?scope=role&targetRole=admin">
@@ -191,19 +171,17 @@ export default async function AdminPage({
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-[1fr_auto_auto] md:items-center">
           <div>
-            <div className="text-lg font-semibold text-stone-950">
-              {settings?.organization_name ?? "Workspace profile"}
-            </div>
-            <p className="mt-1 text-sm text-stone-600">{settings?.product_subtitle ?? "Workspace details are temporarily unavailable."}</p>
+            <div className="text-lg font-semibold text-stone-950">{settings.organization_name}</div>
+            <p className="mt-1 text-sm text-stone-600">{settings.product_subtitle}</p>
             <p className="mt-2 text-sm text-stone-500">
-              Support contact: {settings?.support_email ?? settings?.support_phone ?? "Not configured yet"}
+              Support contact: {settings.support_email ?? settings.support_phone ?? "Not configured yet"}
             </p>
             <p className="mt-1 text-sm text-stone-500">
-              Theme mode: {settings?.theme_preset_key ?? "Unavailable"}
+              Theme mode: {settings.theme_preset_key}
             </p>
           </div>
           <Badge className="brand-chip border-0">{setupComplete ? "Launch ready" : "Setup in progress"}</Badge>
-          <Link className={outlineLinkClassName} href="/setup">
+          <Link className={outlineLinkClassName} href="/setup" prefetch={false}>
             Update branding
           </Link>
         </CardContent>

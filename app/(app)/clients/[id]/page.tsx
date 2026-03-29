@@ -8,6 +8,13 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { getStaffDisplayName, requireRole } from "@/lib/auth";
+import {
+  buildDisplayValues,
+  buildGroupedServiceDisplayValues,
+  getActiveCustomFieldDefinitions,
+  getClientCustomFieldValues,
+  getServiceEntryCustomFieldValues,
+} from "@/lib/custom-fields";
 
 function NoteContent({ notes }: { notes: string }) {
   const sections = notes.split("\n\n").filter(Boolean);
