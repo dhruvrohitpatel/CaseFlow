@@ -42,3 +42,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+#openai
+.env.local
+
+# python
+venv/
+requirements.txt
