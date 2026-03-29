@@ -62,6 +62,7 @@ export function AppShell({
           { href: "/dashboard", label: "Dashboard" },
           { href: "/clients", label: "Clients" },
           { href: "/clients/new", label: "New client" },
+          { href: "/services", label: "Voice notes" },
           { href: "/schedule", label: "Schedule" },
           ...(profile.role === "admin"
             ? [
