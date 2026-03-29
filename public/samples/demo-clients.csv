@@ -1,0 +1,6 @@
+full_name,preferred_name,date_of_birth,phone,email,preferred_language,pronouns,housing_status,referral_source,status
+Marisol Vega,Mari,1987-04-11,(602) 555-0101,marisol.vega@example.org,Spanish,she/her,Temporary housing,Community partner,active
+Devon Carter,,1995-09-03,(602) 555-0102,devon.carter@example.org,English,they/them,Stable housing,Walk-in,active
+Amina Hassan,,1979-12-18,(602) 555-0103,amina.hassan@example.org,Arabic,she/her,Staying with family or friends,Hospital,active
+Bryce Nguyen,Bryce,2000-06-24,(602) 555-0104,bryce.nguyen@example.org,English,he/him,Unsheltered,Hotline,active
+Elena Ruiz,,1992-02-07,(602) 555-0105,elena.ruiz@example.org,Spanish,she/her,Stable housing,School,inactive

@@ -1,13 +1,17 @@
 import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
 
-import { getClientEnv } from "@/lib/env";
+import { getSupabasePublicEnv } from "@/lib/env";
 import type { Database } from "@/lib/database.types";
 
 export async function updateSession(request: NextRequest) {
-  const clientEnv = getClientEnv();
+  const clientEnv = getSupabasePublicEnv();
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-pathname", request.nextUrl.pathname);
   let response = NextResponse.next({
-    request,
+    request: {
+      headers: requestHeaders,
+    },
   });
 
   const supabase = createServerClient<Database>(
@@ -24,7 +28,9 @@ export async function updateSession(request: NextRequest) {
           );
 
           response = NextResponse.next({
-            request,
+            request: {
+              headers: requestHeaders,
+            },
           });
 
           cookiesToSet.forEach(({ name, value, options }) => {

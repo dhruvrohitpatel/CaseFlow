@@ -76,9 +76,9 @@ export function SignUpForm() {
   return (
     <Card className="border-stone-200 shadow-sm">
       <CardHeader>
-        <CardTitle>Create a staff account</CardTitle>
+        <CardTitle>Set up password access</CardTitle>
         <CardDescription>
-          Default signups are created as staff. Promote one account to admin in Supabase for team setup.
+          If your approved email cannot use Google, create a password login here. Your role still comes from the organization access list.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -136,7 +136,7 @@ export function SignUpForm() {
           </div>
 
           <FormMessage message={state.message} />
-          <SubmitButton pendingLabel="Creating account...">Create account</SubmitButton>
+          <SubmitButton pendingLabel="Creating access...">Create password access</SubmitButton>
         </form>
       </CardContent>
     </Card>

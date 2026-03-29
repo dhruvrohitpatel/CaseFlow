@@ -1,6 +1,8 @@
 import { format } from "date-fns";
 import { notFound } from "next/navigation";
 
+import { CustomFieldDisplayList } from "@/components/custom-fields/custom-field-display-list";
+import { ClientStatusForm } from "@/components/forms/client-status-form";
 import { ServiceEntryForm } from "@/components/forms/service-entry-form";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -53,7 +55,9 @@ type ClientProfilePageProps = {
   params: Promise<{ id: string }>;
   searchParams: Promise<{
     created?: string;
+    error?: string;
     logged?: string;
+    updated?: string;
   }>;
 };
 
@@ -62,7 +66,7 @@ export default async function ClientProfilePage({
   searchParams,
 }: ClientProfilePageProps) {
   const { id } = await params;
-  const { created, logged } = await searchParams;
+  const { created, error, logged, updated } = await searchParams;
   const { profile, supabase, user } = await requireRole(["admin", "staff"]);
 
   const { data: client, error: clientError } = await supabase
@@ -78,6 +82,8 @@ export default async function ClientProfilePage({
   const [
     { data: serviceTypes, error: serviceTypesError },
     { data: serviceEntries, error: serviceEntriesError },
+    clientCustomDefinitions,
+    serviceCustomDefinitions,
   ] = await Promise.all([
     supabase
       .from("service_types")
@@ -90,6 +96,8 @@ export default async function ClientProfilePage({
       .eq("client_id", client.id)
       .order("service_date", { ascending: false })
       .order("created_at", { ascending: false }),
+    getActiveCustomFieldDefinitions(supabase, "client"),
+    getActiveCustomFieldDefinitions(supabase, "service_entry"),
   ]);
 
   if (serviceTypesError || serviceEntriesError) {
@@ -104,6 +112,21 @@ export default async function ClientProfilePage({
           ? entry.service_types[0]?.name
           : (entry.service_types as { name?: string } | null)?.name ?? "Service",
     })) ?? [];
+  const [clientCustomValues, serviceCustomValues] = await Promise.all([
+    getClientCustomFieldValues(supabase, client.id),
+    getServiceEntryCustomFieldValues(
+      supabase,
+      history.map((entry) => entry.id),
+    ),
+  ]);
+  const clientDisplayValues = buildDisplayValues(
+    clientCustomDefinitions,
+    clientCustomValues,
+  );
+  const serviceDisplayValues = buildGroupedServiceDisplayValues(
+    serviceCustomDefinitions,
+    serviceCustomValues,
+  );
 
   return (
     <div className="space-y-6">
@@ -117,17 +140,29 @@ export default async function ClientProfilePage({
           Service entry saved successfully.
         </div>
       ) : null}
+      {updated === "1" ? (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+          Client status updated.
+        </div>
+      ) : null}
+      {error === "status" ? (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          We could not update the client status. Try again.
+        </div>
+      ) : null}
 
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <div className="flex flex-wrap items-center gap-3">
             <h1 className="text-3xl font-semibold tracking-tight text-stone-950">{client.full_name}</h1>
             <Badge variant="secondary">{client.client_id}</Badge>
+            <Badge className="capitalize" variant="outline">{client.status}</Badge>
           </div>
           <p className="mt-2 text-sm text-stone-600">
-            Demographics at the top, service history below, newest activity first.
+            Demographics, custom fields, and service history stay together so staff can work from one page.
           </p>
         </div>
+        <ClientStatusForm clientPublicId={client.client_id} status={client.status} />
       </div>
 
       <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
@@ -171,11 +206,22 @@ export default async function ClientProfilePage({
               <p className="text-sm font-medium text-stone-500">Referral source</p>
               <p className="mt-1 text-sm text-stone-900">{client.referral_source}</p>
             </div>
+            <div className="sm:col-span-2">
+              <Separator />
+            </div>
+            <div className="sm:col-span-2">
+              <CustomFieldDisplayList
+                emptyMessage="No admin-defined client fields have been filled in yet."
+                title="Custom profile fields"
+                values={clientDisplayValues}
+              />
+            </div>
           </CardContent>
         </Card>
 
         <ServiceEntryForm
           clientPublicId={client.client_id}
+          customFieldDefinitions={serviceCustomDefinitions}
           serviceTypes={serviceTypes ?? []}
           staffMemberName={getStaffDisplayName(profile, user.email)}
         />

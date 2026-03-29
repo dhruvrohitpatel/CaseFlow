@@ -1,0 +1,5 @@
+client_public_id,scheduled_for,duration_minutes,location,notes,reminder_status,staff_member_name
+CF-DEMO-001,2026-03-31T16:00:00.000Z,45,Main office,Rental assistance document review,pending,Jordan Lee
+CF-DEMO-002,2026-04-01T18:30:00.000Z,30,Phone,SNAP recertification follow-up,sent,Alex Morgan
+CF-DEMO-003,2026-04-02T20:00:00.000Z,60,Shelter intake desk,Transportation support and intake review,pending,Jordan Lee
+CF-DEMO-004,2026-04-03T17:00:00.000Z,30,School partner office,Youth services coordination,sent,Alex Morgan

@@ -24,7 +24,7 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
 
   let clientQuery = supabase
     .from("clients")
-    .select("client_id, full_name, phone, preferred_language, created_at")
+    .select("client_id, full_name, phone, preferred_language, created_at, status")
     .order("created_at", { ascending: false });
 
   if (query) {
@@ -84,6 +84,7 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
                     <TableHead>Public ID</TableHead>
                     <TableHead>Phone</TableHead>
                     <TableHead>Language</TableHead>
+                    <TableHead>Status</TableHead>
                     <TableHead className="text-right">Open</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -96,6 +97,7 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
                       <TableCell className="text-stone-600">{client.client_id}</TableCell>
                       <TableCell className="text-stone-600">{client.phone ?? "Not provided"}</TableCell>
                       <TableCell className="text-stone-600">{client.preferred_language}</TableCell>
+                      <TableCell className="capitalize text-stone-600">{client.status}</TableCell>
                       <TableCell className="text-right">
                         <Link className={ghostLinkClassName} href={`/clients/${client.client_id}`}>
                           View profile
