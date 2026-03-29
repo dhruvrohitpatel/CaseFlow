@@ -1,23 +1,11 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 
 import { LoginForm } from "@/components/forms/login-form";
 import { Card, CardContent } from "@/components/ui/card";
 import { getCurrentSession } from "@/lib/auth";
 import { getOrganizationSettings, getSupportHref } from "@/lib/organization-settings";
-
-function resolveError(error?: string) {
-  switch (error) {
-    case "not-approved":
-      return "That email is not approved for workspace access yet. Ask your organization admin to add it first.";
-    case "oauth":
-      return "Google sign-in could not complete. Try again or use the password fallback if your organization supports it.";
-    case "portal-missing":
-      return "Your client portal access is not fully configured yet. Contact your organization for help.";
-    default:
-      return null;
-  }
-}
 
 type LoginPageProps = {
   searchParams: Promise<{
@@ -27,14 +15,24 @@ type LoginPageProps = {
 };
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
-  const [session, settings, params] = await Promise.all([
+  const [session, settings, params, t] = await Promise.all([
     getCurrentSession(),
     getOrganizationSettings(),
     searchParams,
+    getTranslations("LoginPage"),
   ]);
 
   if (session) {
     redirect("/dashboard");
+  }
+
+  function resolveError(error?: string) {
+    switch (error) {
+      case "not-approved": return t("errorNotApproved");
+      case "oauth": return t("errorOauth");
+      case "portal-missing": return t("errorPortalMissing");
+      default: return null;
+    }
   }
 
   const errorMessage = resolveError(params.error);
@@ -57,8 +55,13 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
                     />
                   </>
                 ) : (
-                  <div className="flex h-14 w-14 items-center justify-center rounded-3xl text-sm font-semibold text-[color:var(--brand-primary-foreground)] shadow-sm" style={{ backgroundColor: "var(--brand-primary)" }}>
-                    {settings.organization_name.slice(0, 2).toUpperCase()}
+                  <div
+                    aria-label={settings.organization_name}
+                    className="flex h-14 w-14 items-center justify-center rounded-3xl text-sm font-semibold text-[color:var(--brand-primary-foreground)] shadow-sm"
+                    role="img"
+                    style={{ backgroundColor: "var(--brand-primary)" }}
+                  >
+                    <span aria-hidden="true">{settings.organization_name.slice(0, 2).toUpperCase()}</span>
                   </div>
                 )}
                 <div>
@@ -82,30 +85,30 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="rounded-3xl border border-white/80 bg-white/88 p-5 shadow-sm">
                 <p className="text-xs font-medium uppercase tracking-[0.2em] text-stone-500">
-                  Staff and admins
+                  {t("staffLabel")}
                 </p>
                 <p className="mt-3 text-sm leading-6 text-stone-600">
-                  Use the same workspace for intake, appointments, reporting, semantic note search, and operational controls.
+                  {t("staffDesc")}
                 </p>
               </div>
               <div className="rounded-3xl border border-white/80 bg-white/88 p-5 shadow-sm">
                 <p className="text-xs font-medium uppercase tracking-[0.2em] text-stone-500">
-                  Clients
+                  {t("clientsLabel")}
                 </p>
                 <p className="mt-3 text-sm leading-6 text-stone-600">
-                  Invite-only portal access stays read-only and keeps internal notes hidden while surfacing upcoming appointments and recent activity.
+                  {t("clientsDesc")}
                 </p>
               </div>
             </div>
 
             {errorMessage ? (
-              <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              <div aria-live="assertive" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">
                 {errorMessage}
               </div>
             ) : null}
 
             <div className="rounded-2xl border border-stone-200 bg-white/80 p-4 text-sm leading-6 text-stone-600">
-              Need access? Ask your organization admin to add your email and assign your role before you sign in.
+              {t("needAccess")}
               {supportHref ? (
                 <>
                   {" "}
@@ -117,7 +120,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
             </div>
 
             <Link className="text-sm font-medium text-stone-700 underline-offset-4 hover:underline" href="/">
-              Back to overview
+              {t("backToOverview")}
             </Link>
           </CardContent>
         </Card>

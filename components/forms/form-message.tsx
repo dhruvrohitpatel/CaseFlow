@@ -17,6 +17,7 @@ export function FormMessage({
 
   return (
     <div
+      aria-live={tone === "error" ? "assertive" : "polite"}
       className={cn(
         "rounded-lg border px-3 py-2 text-sm",
         tone === "error"
@@ -24,6 +25,7 @@ export function FormMessage({
           : "border-emerald-200 bg-emerald-50 text-emerald-700",
         className,
       )}
+      role={tone === "error" ? "alert" : "status"}
     >
       {message}
     </div>

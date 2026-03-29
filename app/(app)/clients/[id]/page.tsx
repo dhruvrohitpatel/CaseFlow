@@ -1,5 +1,6 @@
 import { format } from "date-fns";
 import { notFound } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 
 import { CustomFieldDisplayList } from "@/components/custom-fields/custom-field-display-list";
 import { ClientStatusForm } from "@/components/forms/client-status-form";
@@ -75,6 +76,7 @@ export default async function ClientProfilePage({
   const { id } = await params;
   const { created, error, logged, updated } = await searchParams;
   const { profile, supabase, user } = await requireRole(["admin", "staff"]);
+  const t = await getTranslations("ClientProfilePage");
 
   const { data: client, error: clientError } = await supabase
     .from("clients")
@@ -139,22 +141,22 @@ export default async function ClientProfilePage({
     <div className="space-y-6">
       {created === "1" ? (
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-          Client created successfully. The generated public client ID is <strong>{client.client_id}</strong>.
+          {t("successCreated", { clientId: client.client_id })}
         </div>
       ) : null}
       {logged === "1" ? (
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-          Service entry saved successfully.
+          {t("successLogged")}
         </div>
       ) : null}
       {updated === "1" ? (
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-          Client status updated.
+          {t("successUpdated")}
         </div>
       ) : null}
       {error === "status" ? (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          We could not update the client status. Try again.
+          {t("errorStatus")}
         </div>
       ) : null}
 
@@ -166,7 +168,7 @@ export default async function ClientProfilePage({
             <Badge className="capitalize" variant="outline">{client.status}</Badge>
           </div>
           <p className="mt-2 text-sm text-stone-600">
-            Demographics, custom fields, and service history stay together so staff can work from one page.
+            {t("pageDescription")}
           </p>
         </div>
         <ClientStatusForm clientPublicId={client.client_id} status={client.status} />
@@ -175,42 +177,42 @@ export default async function ClientProfilePage({
       <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
         <Card className="border-stone-200 shadow-sm">
           <CardHeader>
-            <CardTitle>Client profile</CardTitle>
-            <CardDescription>Core demographics and contact information for staff.</CardDescription>
+            <CardTitle>{t("cardProfileTitle")}</CardTitle>
+            <CardDescription>{t("cardProfileDescription")}</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4 sm:grid-cols-2">
             <div>
-              <p className="text-sm font-medium text-stone-500">Preferred name</p>
-              <p className="mt-1 text-sm text-stone-900">{client.preferred_name ?? "Not provided"}</p>
+              <p className="text-sm font-medium text-stone-500">{t("fieldPreferredName")}</p>
+              <p className="mt-1 text-sm text-stone-900">{client.preferred_name ?? t("notProvided")}</p>
             </div>
             <div>
-              <p className="text-sm font-medium text-stone-500">Date of birth</p>
+              <p className="text-sm font-medium text-stone-500">{t("fieldDateOfBirth")}</p>
               <p className="mt-1 text-sm text-stone-900">
-                {client.date_of_birth ? format(new Date(client.date_of_birth), "MMMM d, yyyy") : "Not provided"}
+                {client.date_of_birth ? format(new Date(client.date_of_birth), "MMMM d, yyyy") : t("notProvided")}
               </p>
             </div>
             <div>
-              <p className="text-sm font-medium text-stone-500">Phone</p>
-              <p className="mt-1 text-sm text-stone-900">{client.phone ?? "Not provided"}</p>
+              <p className="text-sm font-medium text-stone-500">{t("fieldPhone")}</p>
+              <p className="mt-1 text-sm text-stone-900">{client.phone ?? t("notProvided")}</p>
             </div>
             <div>
-              <p className="text-sm font-medium text-stone-500">Email</p>
-              <p className="mt-1 text-sm text-stone-900">{client.email ?? "Not provided"}</p>
+              <p className="text-sm font-medium text-stone-500">{t("fieldEmail")}</p>
+              <p className="mt-1 text-sm text-stone-900">{client.email ?? t("notProvided")}</p>
             </div>
             <div>
-              <p className="text-sm font-medium text-stone-500">Preferred language</p>
+              <p className="text-sm font-medium text-stone-500">{t("fieldPreferredLanguage")}</p>
               <p className="mt-1 text-sm text-stone-900">{client.preferred_language}</p>
             </div>
             <div>
-              <p className="text-sm font-medium text-stone-500">Pronouns</p>
-              <p className="mt-1 text-sm text-stone-900">{client.pronouns ?? "Not provided"}</p>
+              <p className="text-sm font-medium text-stone-500">{t("fieldPronouns")}</p>
+              <p className="mt-1 text-sm text-stone-900">{client.pronouns ?? t("notProvided")}</p>
             </div>
             <div>
-              <p className="text-sm font-medium text-stone-500">Housing status</p>
+              <p className="text-sm font-medium text-stone-500">{t("fieldHousingStatus")}</p>
               <p className="mt-1 text-sm text-stone-900">{client.housing_status}</p>
             </div>
             <div>
-              <p className="text-sm font-medium text-stone-500">Referral source</p>
+              <p className="text-sm font-medium text-stone-500">{t("fieldReferralSource")}</p>
               <p className="mt-1 text-sm text-stone-900">{client.referral_source}</p>
             </div>
             <div className="sm:col-span-2">
@@ -218,8 +220,8 @@ export default async function ClientProfilePage({
             </div>
             <div className="sm:col-span-2">
               <CustomFieldDisplayList
-                emptyMessage="No admin-defined client fields have been filled in yet."
-                title="Custom profile fields"
+                emptyMessage={t("customFieldsEmptyMessage")}
+                title={t("customFieldsTitle")}
                 values={clientDisplayValues}
               />
             </div>
@@ -236,9 +238,9 @@ export default async function ClientProfilePage({
 
       <Card className="border-stone-200 shadow-sm">
         <CardHeader>
-          <CardTitle>Service history</CardTitle>
+          <CardTitle>{t("serviceHistoryTitle")}</CardTitle>
           <CardDescription>
-            Reverse chronological history of services, visits, and follow-up notes.
+            {t("serviceHistoryDescription")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -253,14 +255,14 @@ export default async function ClientProfilePage({
                         {format(new Date(entry.service_date), "MMMM d, yyyy")} by {entry.staff_member_name}
                       </p>
                     </div>
-                    <Badge variant="outline">Service log</Badge>
+                    <Badge variant="outline">{t("serviceLogBadge")}</Badge>
                   </div>
                   <NoteContent notes={entry.notes} />
                   {serviceDisplayValues.get(entry.id)?.length ? (
                     <div className="rounded-xl bg-stone-50 p-4">
                       <CustomFieldDisplayList
                         emptyMessage=""
-                        title="Custom service fields"
+                        title={t("customServiceFieldsTitle")}
                         values={serviceDisplayValues.get(entry.id) ?? []}
                       />
                     </div>
@@ -271,9 +273,9 @@ export default async function ClientProfilePage({
             </div>
           ) : (
             <div className="rounded-2xl border border-dashed border-stone-300 bg-stone-50 px-6 py-12 text-center">
-              <p className="text-base font-medium text-stone-900">No service history yet.</p>
+              <p className="text-base font-medium text-stone-900">{t("emptyHistoryTitle")}</p>
               <p className="mt-2 text-sm text-stone-600">
-                Use the service entry form above to add the client’s first visit.
+                {t("emptyHistoryDescription")}
               </p>
             </div>
           )}

@@ -1,5 +1,6 @@
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 
 import { CreateClientForm } from "@/components/forms/create-client-form";
 import { getAiFeatureState } from "@/lib/ai/capabilities";
@@ -20,9 +21,10 @@ type NewClientPageProps = {
 export default async function NewClientPage({
   searchParams,
 }: NewClientPageProps) {
-  const [{ profile, supabase }, params] = await Promise.all([
+  const [{ profile, supabase }, params, t] = await Promise.all([
     requireRole(["admin", "staff"]),
     searchParams,
+    getTranslations("NewClientPage"),
   ]);
   const customFieldDefinitions = await getActiveCustomFieldDefinitions(
     supabase,
@@ -109,19 +111,19 @@ export default async function NewClientPage({
       <div className="space-y-6">
       {params.discarded === "1" ? (
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-          Intake photo session discarded.
+          {t("intakeDiscarded")}
         </div>
       ) : null}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight text-stone-950">New client</h1>
+          <h1 className="text-3xl font-semibold tracking-tight text-stone-950">{t("pageTitle")}</h1>
           <p className="mt-2 text-sm text-stone-600">
-            Create a client record with core contact and demographic details.
+            {t("pageDescription")}
           </p>
         </div>
         <Link className={outlineLinkClassName} href="/clients">
           <ArrowLeft className="size-4" />
-          Back to clients
+          {t("backToClients")}
         </Link>
       </div>
       <CreateClientForm

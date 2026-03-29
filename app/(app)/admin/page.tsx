@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 
 import {
   deleteAllowlistEntryAction,
@@ -39,7 +40,7 @@ export default async function AdminPage({
   searchParams,
 }: AdminPageProps) {
   const { supabase } = await requireRole(["admin"]);
-  const params = await searchParams;
+  const [params, t] = await Promise.all([searchParams, getTranslations("AdminPage")]);
   const actionFilter = params.action?.trim() ?? "";
   const entityFilter = params.entity?.trim() ?? "";
 
@@ -107,66 +108,66 @@ export default async function AdminPage({
     <div className="space-y-6">
       {params.accessUpdated === "1" ? (
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-          Approved access updated.
+          {t("successAccessUpdated")}
         </div>
       ) : null}
       {params.accessDeleted === "1" ? (
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-          Approved access removed.
+          {t("successAccessDeleted")}
         </div>
       ) : null}
       {params.updated === "1" ? (
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-          Field settings updated.
+          {t("successFieldUpdated")}
         </div>
       ) : null}
       {params.deleted === "1" ? (
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-          Custom field removed.
+          {t("successFieldDeleted")}
         </div>
       ) : null}
       {params.error === "custom-fields" ? (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          We could not update that field definition. Try again.
+          {t("errorCustomFields")}
         </div>
       ) : null}
       {params.error === "allowlist" ? (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          We could not update that approved access entry. Try again.
+          {t("errorAllowlist")}
         </div>
       ) : null}
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight text-stone-950">Admin tools</h1>
+          <h1 className="text-3xl font-semibold tracking-tight text-stone-950">{t("pageTitle")}</h1>
           <p className="mt-2 text-sm text-stone-600">
-            Manage approved access, imports, field configuration, and change history from one page.
+            {t("pageDescription")}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Link className={outlineLinkClassName} href="/setup">
-            {setupComplete ? "Reopen setup guide" : "Open setup guide"}
+            {setupComplete ? t("reopenSetupGuide") : t("openSetupGuide")}
           </Link>
           <Link className={outlineLinkClassName} href="/dashboard/customize?scope=role&targetRole=admin">
-            Customize dashboards
+            {t("customizeDashboards")}
           </Link>
           <Link className={outlineLinkClassName} href="/admin/import-assistant">
-            Open import assistant
+            {t("openImportAssistant")}
           </Link>
           <Link className={outlineLinkClassName} href="/api/templates/clients">
-            Download CSV template
+            {t("downloadCsvTemplate")}
           </Link>
           <Link className={outlineLinkClassName} href="/api/exports/clients">
-            Export clients CSV
+            {t("exportClientsCsv")}
           </Link>
         </div>
       </div>
 
       <Card className="brand-card border shadow-sm">
         <CardHeader>
-          <CardTitle>Workspace profile</CardTitle>
+          <CardTitle>{t("workspaceProfileTitle")}</CardTitle>
           <CardDescription>
-            Review branding, setup status, and admin operations for this deployment.
+            {t("workspaceProfileDescription")}
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-[1fr_auto_auto] md:items-center">
@@ -174,15 +175,15 @@ export default async function AdminPage({
             <div className="text-lg font-semibold text-stone-950">{settings.organization_name}</div>
             <p className="mt-1 text-sm text-stone-600">{settings.product_subtitle}</p>
             <p className="mt-2 text-sm text-stone-500">
-              Support contact: {settings.support_email ?? settings.support_phone ?? "Not configured yet"}
+              {t("supportContact", { contact: settings.support_email ?? settings.support_phone ?? t("supportNotConfigured") })}
             </p>
             <p className="mt-1 text-sm text-stone-500">
-              Theme mode: {settings.theme_preset_key}
+              {t("themeMode", { theme: settings.theme_preset_key })}
             </p>
           </div>
-          <Badge className="brand-chip border-0">{setupComplete ? "Launch ready" : "Setup in progress"}</Badge>
+          <Badge className="brand-chip border-0">{setupComplete ? t("statusLaunchReady") : t("statusSetupInProgress")}</Badge>
           <Link className={outlineLinkClassName} href="/setup">
-            Update branding
+            {t("updateBranding")}
           </Link>
         </CardContent>
       </Card>
@@ -200,9 +201,9 @@ export default async function AdminPage({
       <section className="grid gap-6 xl:grid-cols-2">
         <Card className="brand-card border shadow-sm">
           <CardHeader>
-            <CardTitle>Approved access</CardTitle>
+            <CardTitle>{t("approvedAccessTitle")}</CardTitle>
             <CardDescription>
-              Access is controlled by email allowlist. Google is preferred, and password fallback works only for approved emails.
+              {t("approvedAccessDescription")}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -211,11 +212,11 @@ export default async function AdminPage({
                 <Table>
                   <TableHeader className="bg-stone-50/80">
                     <TableRow>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Role</TableHead>
-                      <TableHead>Linked client</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
+                      <TableHead>{t("tableHeadEmail")}</TableHead>
+                      <TableHead>{t("tableHeadRole")}</TableHead>
+                      <TableHead>{t("tableHeadLinkedClient")}</TableHead>
+                      <TableHead>{t("tableHeadStatus")}</TableHead>
+                      <TableHead className="text-right">{t("tableHeadActions")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -230,10 +231,10 @@ export default async function AdminPage({
                         <TableCell>
                           {entry.linked_client_id ? (
                             <span className="text-sm text-stone-600">
-                              {clientLabelById.get(entry.linked_client_id) ?? "Client record"}
+                              {clientLabelById.get(entry.linked_client_id) ?? t("clientRecord")}
                             </span>
                           ) : (
-                            <span className="text-sm text-stone-400">Not linked</span>
+                            <span className="text-sm text-stone-400">{t("notLinked")}</span>
                           )}
                         </TableCell>
                         <TableCell>
@@ -241,7 +242,7 @@ export default async function AdminPage({
                             className={entry.is_active ? "border-emerald-200 bg-emerald-50 text-emerald-700" : ""}
                             variant={entry.is_active ? "outline" : "outline"}
                           >
-                            {entry.is_active ? "Active" : "Inactive"}
+                            {entry.is_active ? t("statusActive") : t("statusInactive")}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right">
@@ -251,14 +252,14 @@ export default async function AdminPage({
                               <input name="nextValue" type="hidden" value={String(!entry.is_active)} />
                               <input name="returnTo" type="hidden" value="/admin" />
                               <Button size="sm" type="submit" variant="outline">
-                                {entry.is_active ? "Deactivate" : "Activate"}
+                                {entry.is_active ? t("deactivate") : t("activate")}
                               </Button>
                             </form>
                             <form action={deleteAllowlistEntryAction}>
                               <input name="entryId" type="hidden" value={entry.id} />
                               <input name="returnTo" type="hidden" value="/admin" />
                               <Button className="text-red-700 hover:bg-red-50 hover:text-red-800" size="sm" type="submit" variant="ghost">
-                                Remove
+                                {t("remove")}
                               </Button>
                             </form>
                           </div>
@@ -270,7 +271,7 @@ export default async function AdminPage({
               </div>
             ) : (
               <div className="rounded-2xl border border-dashed border-stone-300 bg-stone-50 px-6 py-10 text-sm text-stone-600">
-                No approved access entries yet.
+                {t("emptyApprovedAccess")}
               </div>
             )}
           </CardContent>
@@ -278,9 +279,9 @@ export default async function AdminPage({
 
         <Card className="brand-card border shadow-sm">
           <CardHeader>
-            <CardTitle>Current client portal links</CardTitle>
+            <CardTitle>{t("clientPortalLinksTitle")}</CardTitle>
             <CardDescription>
-              These records are currently bound to a signed-in client profile. The allowlist entry is still the source of truth for future access.
+              {t("clientPortalLinksDescription")}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -289,9 +290,9 @@ export default async function AdminPage({
                 <Table>
                   <TableHeader className="bg-stone-50">
                     <TableRow>
-                      <TableHead>Client</TableHead>
-                      <TableHead>Portal email</TableHead>
-                      <TableHead>Status</TableHead>
+                      <TableHead>{t("tableHeadClient")}</TableHead>
+                      <TableHead>{t("tableHeadPortalEmail")}</TableHead>
+                      <TableHead>{t("tableHeadStatus")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -301,7 +302,7 @@ export default async function AdminPage({
                           <div className="font-medium text-stone-950">{client.full_name}</div>
                           <div className="text-xs text-stone-500">{client.client_id}</div>
                         </TableCell>
-                        <TableCell className="text-stone-600">{client.email ?? "No email set"}</TableCell>
+                        <TableCell className="text-stone-600">{client.email ?? t("noEmailSet")}</TableCell>
                         <TableCell>
                           <Badge className="capitalize" variant="secondary">
                             {client.status}
@@ -314,7 +315,7 @@ export default async function AdminPage({
               </div>
             ) : (
               <div className="rounded-2xl border border-dashed border-stone-300 bg-stone-50 px-6 py-10 text-sm text-stone-600">
-                No client portal accounts are linked yet.
+                {t("emptyClientPortalLinks")}
               </div>
             )}
           </CardContent>
@@ -323,9 +324,9 @@ export default async function AdminPage({
 
       <Card className="brand-card border shadow-sm">
         <CardHeader>
-          <CardTitle>Configured fields</CardTitle>
+          <CardTitle>{t("configuredFieldsTitle")}</CardTitle>
           <CardDescription>
-            Toggle fields on or off without changing the underlying record workflow.
+            {t("configuredFieldsDescription")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -334,12 +335,12 @@ export default async function AdminPage({
               <Table>
                 <TableHeader className="bg-stone-50">
                   <TableRow>
-                    <TableHead>Label</TableHead>
-                    <TableHead>Record type</TableHead>
-                    <TableHead>Field type</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Required</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead>{t("tableHeadLabel")}</TableHead>
+                    <TableHead>{t("tableHeadRecordType")}</TableHead>
+                    <TableHead>{t("tableHeadFieldType")}</TableHead>
+                    <TableHead>{t("tableHeadStatus")}</TableHead>
+                    <TableHead>{t("tableHeadRequired")}</TableHead>
+                    <TableHead className="text-right">{t("tableHeadActions")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -360,10 +361,10 @@ export default async function AdminPage({
                           className={definition.is_active ? "border-emerald-200 bg-emerald-50 text-emerald-700" : ""}
                           variant="outline"
                         >
-                          {definition.is_active ? "Active" : "Inactive"}
+                          {definition.is_active ? t("statusActive") : t("statusInactive")}
                         </Badge>
                       </TableCell>
-                      <TableCell>{definition.is_required ? "Yes" : "No"}</TableCell>
+                      <TableCell>{definition.is_required ? t("requiredYes") : t("requiredNo")}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
                           <form action={toggleCustomFieldActiveAction}>
@@ -371,14 +372,14 @@ export default async function AdminPage({
                             <input name="nextValue" type="hidden" value={String(!definition.is_active)} />
                             <input name="returnTo" type="hidden" value="/admin" />
                             <Button size="sm" type="submit" variant="outline">
-                              {definition.is_active ? "Disable" : "Enable"}
+                              {definition.is_active ? t("disable") : t("enable")}
                             </Button>
                           </form>
                           <form action={deleteCustomFieldDefinitionAction}>
                             <input name="definitionId" type="hidden" value={definition.id} />
                             <input name="returnTo" type="hidden" value="/admin" />
                             <Button className="text-red-700 hover:bg-red-50 hover:text-red-800" size="sm" type="submit" variant="ghost">
-                              Remove
+                              {t("remove")}
                             </Button>
                           </form>
                         </div>
@@ -390,7 +391,7 @@ export default async function AdminPage({
             </div>
           ) : (
             <div className="rounded-2xl border border-dashed border-stone-300 bg-stone-50 px-6 py-10 text-sm text-stone-600">
-              No configurable fields yet.
+              {t("emptyConfiguredFields")}
             </div>
           )}
         </CardContent>
@@ -398,9 +399,9 @@ export default async function AdminPage({
 
       <Card className="brand-card border shadow-sm">
         <CardHeader>
-          <CardTitle>Audit log</CardTitle>
+          <CardTitle>{t("auditLogTitle")}</CardTitle>
           <CardDescription>
-            Change history is stored for clients, service entries, appointments, and field definitions. Sensitive note bodies stay out of the log.
+            {t("auditLogDescription")}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -410,24 +411,24 @@ export default async function AdminPage({
               defaultValue={entityFilter}
               name="entity"
             >
-              <option value="">All entities</option>
-              <option value="appointments">Appointments</option>
-              <option value="clients">Clients</option>
-              <option value="custom_field_definitions">Custom fields</option>
-              <option value="service_entries">Service entries</option>
+              <option value="">{t("filterAllEntities")}</option>
+              <option value="appointments">{t("filterAppointments")}</option>
+              <option value="clients">{t("filterClients")}</option>
+              <option value="custom_field_definitions">{t("filterCustomFields")}</option>
+              <option value="service_entries">{t("filterServiceEntries")}</option>
             </select>
             <select
               className="h-10 rounded-lg border border-stone-200 bg-white px-3 text-sm"
               defaultValue={actionFilter}
               name="action"
             >
-              <option value="">All actions</option>
-              <option value="create">Create</option>
-              <option value="update">Update</option>
-              <option value="delete">Delete</option>
+              <option value="">{t("filterAllActions")}</option>
+              <option value="create">{t("filterCreate")}</option>
+              <option value="update">{t("filterUpdate")}</option>
+              <option value="delete">{t("filterDelete")}</option>
             </select>
             <Button type="submit" variant="outline">
-              Filter
+              {t("filterButton")}
             </Button>
           </form>
           {auditLogs && auditLogs.length > 0 ? (
@@ -435,11 +436,11 @@ export default async function AdminPage({
               <Table>
                 <TableHeader className="bg-stone-50">
                   <TableRow>
-                    <TableHead>When</TableHead>
-                    <TableHead>Action</TableHead>
-                    <TableHead>Entity</TableHead>
-                    <TableHead>Actor</TableHead>
-                    <TableHead>Summary</TableHead>
+                    <TableHead>{t("tableHeadWhen")}</TableHead>
+                    <TableHead>{t("tableHeadAction")}</TableHead>
+                    <TableHead>{t("tableHeadEntity")}</TableHead>
+                    <TableHead>{t("tableHeadActor")}</TableHead>
+                    <TableHead>{t("tableHeadSummary")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -451,7 +452,7 @@ export default async function AdminPage({
                       <TableCell className="capitalize text-stone-600">{log.action}</TableCell>
                       <TableCell className="text-stone-600">{log.entity_type}</TableCell>
                       <TableCell className="text-stone-600">
-                        {log.actor_profile_id ?? "System"}
+                        {log.actor_profile_id ?? t("systemActor")}
                       </TableCell>
                       <TableCell className="max-w-md text-xs text-stone-600">
                         <pre className="whitespace-pre-wrap font-mono">
@@ -465,7 +466,7 @@ export default async function AdminPage({
             </div>
           ) : (
             <div className="rounded-2xl border border-dashed border-stone-300 bg-stone-50 px-6 py-10 text-sm text-stone-600">
-              No audit events matched the current filters.
+              {t("emptyAuditLog")}
             </div>
           )}
         </CardContent>

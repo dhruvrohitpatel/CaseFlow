@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 
 import { OrganizationSetupForms } from "@/components/forms/organization-setup-forms";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,10 +19,11 @@ type SetupPageProps = {
 };
 
 export default async function SetupPage({ searchParams }: SetupPageProps) {
-  const [{ profile, supabase }, settings, params] = await Promise.all([
+  const [{ profile, supabase }, settings, params, t] = await Promise.all([
     requireRole(["admin"]),
     getOrganizationSettings(),
     searchParams,
+    getTranslations("SetupPage"),
   ]);
   const adminAi = getAiFeatureState("admin_ai");
   const [{ count: accessCount, error: accessError }, { data: themeDrafts, error: themeDraftError }] =
@@ -45,34 +47,34 @@ export default async function SetupPage({ searchParams }: SetupPageProps) {
     <div className="space-y-6">
       {params.saved === "1" ? (
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-          Setup progress saved.
+          {t("successSaved")}
         </div>
       ) : null}
       {params.error === "step" ? (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          We could not update that setup step. Try again.
+          {t("errorStep")}
         </div>
       ) : null}
 
       <Card className="brand-card border shadow-sm">
         <CardHeader>
-          <CardTitle className="text-2xl">Setup guide</CardTitle>
+          <CardTitle className="text-2xl">{t("cardTitle")}</CardTitle>
           <CardDescription className="max-w-3xl text-sm leading-6 text-stone-600">
-            Finish branding, support details, access review, and starter-data planning so this deployment feels ready for a real nonprofit team instead of a half-configured workspace.
+            {t("cardDescription")}
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-wrap items-center gap-2">
           <div className="rounded-full border border-stone-200 bg-white/85 px-4 py-2 text-sm font-medium text-stone-950">
-            Signed in as {profile.full_name ?? profile.email}
+            {t("signedInAs", { name: profile.full_name ?? profile.email })}
           </div>
           <div className="rounded-full border border-stone-200 bg-white/85 px-4 py-2 text-sm text-stone-600">
-            Deploy-per-org workflow active
+            {t("deployWorkflow")}
           </div>
           <Link
             className="inline-flex h-9 items-center justify-center rounded-lg border border-stone-200 bg-white px-3 text-sm font-medium text-stone-900 transition-colors hover:bg-stone-100"
             href={complete ? getDashboardPathForRole(profile.role) : "/admin"}
           >
-            {complete ? "Open dashboard" : "Open admin tools"}
+            {complete ? t("openDashboard") : t("openAdminTools")}
           </Link>
         </CardContent>
       </Card>

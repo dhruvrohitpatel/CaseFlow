@@ -1,5 +1,7 @@
 import type { CSSProperties } from "react";
 import type { Metadata } from "next";
+import { NextIntlClientProvider } from "next-intl";
+import { getLocale, getMessages } from "next-intl/server";
 
 import { getOrganizationSettings, getThemeCssVariables } from "@/lib/organization-settings";
 import "./globals.css";
@@ -27,13 +29,20 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const settings = await getOrganizationSettings();
+  const [settings, locale, messages] = await Promise.all([
+    getOrganizationSettings(),
+    getLocale(),
+    getMessages(),
+  ]);
   const themeStyle = getThemeCssVariables(settings) as CSSProperties;
 
   return (
-    <html lang="en" className="h-full antialiased">
+    <html lang={locale} className="h-full antialiased">
       <body className="min-h-full bg-background text-foreground flex flex-col" style={themeStyle}>
-        {children}
+        <a className="skip-to-content" href="#main-content">Skip to main content</a>
+        <NextIntlClientProvider messages={messages}>
+          {children}
+        </NextIntlClientProvider>
       </body>
     </html>
   );

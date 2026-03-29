@@ -139,6 +139,31 @@
   html {
     @apply font-sans;
   }
+
+  /* Skip-to-content link for keyboard users */
+  .skip-to-content {
+    position: absolute;
+    left: -9999px;
+    top: 1rem;
+    z-index: 9999;
+    padding: 0.5rem 1rem;
+    background: var(--brand-primary);
+    color: var(--brand-primary-foreground);
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    text-decoration: none;
+  }
+  .skip-to-content:focus {
+    left: 1rem;
+  }
+
+  /* Consistent focus-visible ring across all interactive elements */
+  :focus-visible {
+    outline: 2px solid var(--brand-primary);
+    outline-offset: 3px;
+    border-radius: 4px;
+  }
 }
 
 @layer utilities {

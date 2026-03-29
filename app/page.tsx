@@ -1,19 +1,25 @@
 import Link from "next/link";
-import { ArrowRight, BadgeCheck, BriefcaseBusiness, Palette, UsersRound } from "lucide-react";
+import { ArrowRight, ArrowDown, BadgeCheck, BriefcaseBusiness, Palette, UsersRound } from "lucide-react";
 import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
+
+import { getLocale } from "next-intl/server";
 
 import { getCurrentSession } from "@/lib/auth";
 import { getOrganizationSettings, getSupportHref } from "@/lib/organization-settings";
+import { LanguageSwitcher } from "@/components/layout/language-switcher";
 
 const primaryLinkClassName =
-  "inline-flex h-10 items-center justify-center gap-2 rounded-lg px-4 text-sm font-medium transition-colors brand-primary-button";
+  "inline-flex h-11 items-center justify-center gap-2 rounded-lg px-6 text-sm font-semibold transition-colors brand-primary-button shadow-sm";
 const outlineLinkClassName =
-  "inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-stone-200 bg-white px-4 text-sm font-medium text-stone-900 transition-colors hover:bg-stone-100";
+  "inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-stone-200 bg-white px-4 text-sm font-medium text-stone-900 transition-colors hover:bg-stone-100";
 
 export default async function HomePage() {
-  const [session, settings] = await Promise.all([
+  const [session, settings, t, locale] = await Promise.all([
     getCurrentSession(),
     getOrganizationSettings(),
+    getTranslations("HomePage"),
+    getLocale(),
   ]);
 
   if (session) {
@@ -37,39 +43,44 @@ export default async function HomePage() {
                 />
               </>
             ) : (
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-stone-200 bg-[color:var(--brand-primary)] text-sm font-semibold text-[color:var(--brand-primary-foreground)] shadow-sm">
-                {settings.organization_name.slice(0, 2).toUpperCase()}
+              <div
+                aria-label={settings.organization_name}
+                className="flex h-11 w-11 items-center justify-center rounded-2xl border border-stone-200 bg-[color:var(--brand-primary)] text-sm font-semibold text-[color:var(--brand-primary-foreground)] shadow-sm"
+                role="img"
+              >
+                <span aria-hidden="true">{settings.organization_name.slice(0, 2).toUpperCase()}</span>
               </div>
             )}
             <div>
-              <p className="text-sm font-medium uppercase tracking-[0.2em] text-stone-500">
+              <p className="text-sm font-medium text-stone-900">
                 {settings.organization_name}
               </p>
-              <p className="mt-1 text-sm text-stone-600">{settings.product_subtitle}</p>
+              <p className="mt-0.5 text-xs text-stone-500">{settings.product_subtitle}</p>
             </div>
           </div>
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <LanguageSwitcher currentLocale={locale} />
             {supportHref ? (
               <Link className={outlineLinkClassName} href={supportHref}>
                 {settings.support_cta_text}
               </Link>
             ) : null}
             <Link className={primaryLinkClassName} href="/login">
-              Sign in
-              <ArrowRight className="size-4" />
+              {t("signIn")}
+              <ArrowRight aria-hidden="true" className="size-4" />
             </Link>
           </div>
         </header>
 
-        <main className="flex flex-1 items-center py-10">
+        <main className="flex flex-1 items-center py-10" id="main-content">
           <div className="grid w-full gap-8 lg:grid-cols-[1.05fr_0.95fr]">
             <section className="space-y-8">
               <div className="space-y-5">
-                <div className="inline-flex rounded-full px-3 py-1.5 text-xs font-medium uppercase tracking-[0.2em] brand-chip">
-                  White-label nonprofit operations
+                <div className="inline-flex rounded-full px-3 py-1.5 text-xs font-medium brand-chip">
+                  {t("chip", { orgName: settings.organization_name })}
                 </div>
-                <h1 className="max-w-4xl text-5xl font-semibold tracking-tight text-stone-950">
-                  {settings.organization_name} can run case management, client portals, and operational reporting from one branded workspace.
+                <h1 className="max-w-2xl text-5xl font-semibold tracking-tight text-stone-950">
+                  {t("headline")}
                 </h1>
                 <p className="max-w-2xl text-lg leading-8 text-stone-600">
                   {settings.public_welcome_text}
@@ -77,70 +88,67 @@ export default async function HomePage() {
               </div>
 
               <div className="flex flex-wrap gap-3">
-                <Link className={primaryLinkClassName} href="/login">
-                  Access your workspace
-                  <ArrowRight className="size-4" />
-                </Link>
                 <Link className={outlineLinkClassName} href="#product-sections">
-                  See how the platform works
+                  {t("seeHowItWorks")}
+                  <ArrowDown aria-hidden="true" className="size-4" />
                 </Link>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-3" id="product-sections">
+              <div aria-label="Platform features" className="grid gap-4 md:grid-cols-3" id="product-sections">
                 <div className="brand-card rounded-3xl border p-5">
-                  <BriefcaseBusiness className="size-5 text-stone-700" />
-                  <h2 className="mt-4 text-lg font-semibold text-stone-950">Operational hub</h2>
+                  <BriefcaseBusiness aria-hidden="true" className="size-5 text-stone-700" />
+                  <h2 className="mt-4 text-base font-semibold text-stone-950">{t("staffToolsTitle")}</h2>
                   <p className="mt-2 text-sm leading-6 text-stone-600">
-                    Intake, appointments, service logs, dashboards, and approved access all live in the same product shell.
+                    {t("staffToolsDesc")}
                   </p>
                 </div>
                 <div className="brand-card rounded-3xl border p-5">
-                  <Palette className="size-5 text-stone-700" />
-                  <h2 className="mt-4 text-lg font-semibold text-stone-950">Branded per nonprofit</h2>
+                  <Palette aria-hidden="true" className="size-5 text-stone-700" />
+                  <h2 className="mt-4 text-base font-semibold text-stone-950">{t("brandedTitle")}</h2>
                   <p className="mt-2 text-sm leading-6 text-stone-600">
-                    Each deployment can carry the nonprofit’s name, colors, logo, support contact, and portal copy without rebuilding the platform.
+                    {t("brandedDesc")}
                   </p>
                 </div>
                 <div className="brand-card rounded-3xl border p-5">
-                  <UsersRound className="size-5 text-stone-700" />
-                  <h2 className="mt-4 text-lg font-semibold text-stone-950">Role-aware experience</h2>
+                  <UsersRound aria-hidden="true" className="size-5 text-stone-700" />
+                  <h2 className="mt-4 text-base font-semibold text-stone-950">{t("roleAccessTitle")}</h2>
                   <p className="mt-2 text-sm leading-6 text-stone-600">
-                    Admins, staff, and clients each land in the workspace they need without getting buried in controls meant for someone else.
+                    {t("roleAccessDesc")}
                   </p>
                 </div>
               </div>
             </section>
 
             <section className="brand-card rounded-[2rem] border p-8 lg:p-10">
-              <p className="text-sm font-medium uppercase tracking-[0.2em] text-stone-500">
-                What ships with each deployment
+              <p className="text-sm font-semibold text-stone-700">
+                {t("whatsIncluded")}
               </p>
-              <div className="mt-6 space-y-5">
+              <div className="mt-6 space-y-4">
                 <div className="rounded-2xl border border-white/80 bg-white/88 p-5">
-                  <h2 className="text-base font-semibold text-stone-950">Admin setup wizard</h2>
+                  <h2 className="text-base font-semibold text-stone-950">{t("onboardingTitle")}</h2>
                   <p className="mt-2 text-sm leading-6 text-stone-600">
-                    Brand the workspace, configure support contact, review allowlist onboarding, and launch from one guided flow.
+                    {t("onboardingDesc")}
                   </p>
                 </div>
                 <div className="rounded-2xl border border-white/80 bg-white/88 p-5">
-                  <h2 className="text-base font-semibold text-stone-950">Mission-control dashboard</h2>
+                  <h2 className="text-base font-semibold text-stone-950">{t("dashboardTitle")}</h2>
                   <p className="mt-2 text-sm leading-6 text-stone-600">
-                    Track active clients, service activity, schedules, semantic note search, exports, and audit visibility from one admin surface.
+                    {t("dashboardDesc")}
                   </p>
                 </div>
                 <div className="rounded-2xl border border-white/80 bg-white/88 p-5">
-                  <h2 className="text-base font-semibold text-stone-950">Secure invite-only access</h2>
+                  <h2 className="text-base font-semibold text-stone-950">{t("secureTitle")}</h2>
                   <p className="mt-2 text-sm leading-6 text-stone-600">
-                    Google sign-in is preferred, approved password fallback remains available, and every portal user is routed by role after sign-in.
+                    {t("secureDesc")}
                   </p>
                 </div>
                 <div className="rounded-2xl border border-dashed border-stone-300 bg-white/80 p-5">
                   <div className="flex items-center gap-2 text-sm font-medium text-stone-950">
-                    <BadgeCheck className="size-4" />
-                    Deploy-per-org model
+                    <BadgeCheck aria-hidden="true" className="size-4" />
+                    {t("privateTitle")}
                   </div>
                   <p className="mt-2 text-sm leading-6 text-stone-600">
-                    Each nonprofit gets its own deployment, branding layer, support materials, and onboarding checklist instead of sharing a noisy multi-tenant portal.
+                    {t("privateDesc")}
                   </p>
                 </div>
               </div>

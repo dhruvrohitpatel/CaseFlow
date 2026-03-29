@@ -1,3 +1,5 @@
+import { getTranslations } from "next-intl/server";
+
 import { VoiceServiceEntry } from "@/components/voice/VoiceServiceEntry";
 import {
   Card,
@@ -10,6 +12,7 @@ import { requireRole } from "@/lib/auth";
 
 export default async function ServicesPage() {
   const { supabase } = await requireRole(["admin", "staff"]);
+  const t = await getTranslations("ServicesPage");
 
   const [{ data: clients }, { data: serviceTypes }] = await Promise.all([
     supabase
@@ -26,19 +29,17 @@ export default async function ServicesPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-semibold tracking-tight text-stone-950">Voice notes</h1>
+        <h1 className="text-3xl font-semibold tracking-tight text-stone-950">{t("pageTitle")}</h1>
         <p className="mt-2 text-sm text-stone-600">
-          Record your session summary out loud — AI transcribes and structures it into a case note
-          for review before saving.
+          {t("pageDescription")}
         </p>
       </div>
 
       <Card className="border-stone-200 shadow-sm">
         <CardHeader>
-          <CardTitle>Record a case note</CardTitle>
+          <CardTitle>{t("cardTitle")}</CardTitle>
           <CardDescription>
-            Select a client, tap Start Recording, speak your summary, then review and save the
-            AI-structured entry.
+            {t("cardDescription")}
           </CardDescription>
         </CardHeader>
         <CardContent>

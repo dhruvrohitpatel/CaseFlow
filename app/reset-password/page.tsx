@@ -1,10 +1,11 @@
 import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 
 import { ResetPasswordForm } from "@/components/forms/reset-password-form";
 import { getCurrentSession } from "@/lib/auth";
 
 export default async function ResetPasswordPage() {
-  const session = await getCurrentSession();
+  const [session, t] = await Promise.all([getCurrentSession(), getTranslations("ResetPasswordPage")]);
 
   if (!session) {
     redirect("/login");
@@ -15,16 +16,16 @@ export default async function ResetPasswordPage() {
       <div className="grid w-full max-w-5xl gap-6 lg:grid-cols-[1.05fr_0.95fr]">
         <div className="rounded-3xl border border-stone-200 bg-white/90 p-8 shadow-sm lg:p-10">
           <p className="text-sm font-medium uppercase tracking-[0.2em] text-stone-500">
-            Account security
+            {t("securityLabel")}
           </p>
           <h1 className="mt-4 text-4xl font-semibold tracking-tight text-stone-950">
-            Update your password securely.
+            {t("pageTitle")}
           </h1>
           <p className="mt-4 max-w-xl text-base leading-7 text-stone-600">
-            Use this page if you rely on the password fallback instead of Google sign-in and want to change your password.
+            {t("pageDescription")}
           </p>
           <div className="mt-8 rounded-2xl border border-stone-200 bg-stone-50 p-4 text-sm leading-6 text-stone-600">
-            After you update the password, CaseFlow will send you back to the right dashboard for your role automatically.
+            {t("infoNote")}
           </div>
         </div>
         <ResetPasswordForm />

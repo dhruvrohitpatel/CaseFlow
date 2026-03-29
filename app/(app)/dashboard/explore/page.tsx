@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { endOfMonth, endOfQuarter, endOfWeek, format, startOfMonth, startOfQuarter, startOfToday, startOfWeek } from "date-fns";
+import { getTranslations } from "next-intl/server";
 
 import { getPortalClientForCurrentUser, requireAppSession } from "@/lib/auth";
 
@@ -86,8 +87,11 @@ function getDateRangeForBucket(dimension?: string, value?: string) {
 export default async function DashboardExplorePage({
   searchParams,
 }: ExplorePageProps) {
-  const params = await searchParams;
-  const { profile, supabase } = await requireAppSession();
+  const [params, { profile, supabase }, t] = await Promise.all([
+    searchParams,
+    requireAppSession(),
+    getTranslations("ExplorePage"),
+  ]);
   const source = params.source?.trim() ?? "clients";
   const value = params.value?.trim();
   const dimension = params.dimension?.trim();
@@ -97,7 +101,7 @@ export default async function DashboardExplorePage({
   if (profile.role === "client" && source === "clients") {
     return (
       <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-        That detail view is not available in the client portal.
+        {t("errorClientPortalUnavailable")}
       </div>
     );
   }
@@ -105,7 +109,7 @@ export default async function DashboardExplorePage({
   if (source === "access_allowlist" && profile.role !== "admin") {
     return (
       <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-        That detail view is only available to admins.
+        {t("errorAdminOnly")}
       </div>
     );
   }
@@ -145,12 +149,14 @@ export default async function DashboardExplorePage({
       throw new Error(error.message);
     }
 
+    const filterText = dimension && value ? `${dimension} = ${value}` : t("filterAllClients");
+
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight text-stone-950">Explore clients</h1>
+          <h1 className="text-3xl font-semibold tracking-tight text-stone-950">{t("exploreClientsTitle")}</h1>
           <p className="mt-2 text-sm text-stone-600">
-            Filter: {dimension && value ? `${dimension} = ${value}` : "all clients"}
+            {t("filterLabel", { filter: filterText })}
           </p>
         </div>
         <div className="space-y-3">
@@ -201,12 +207,14 @@ export default async function DashboardExplorePage({
       throw new Error(error.message);
     }
 
+    const filterText = dimension && value ? `${dimension} = ${value}` : t("filterAllAppointments");
+
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight text-stone-950">Explore appointments</h1>
+          <h1 className="text-3xl font-semibold tracking-tight text-stone-950">{t("exploreAppointmentsTitle")}</h1>
           <p className="mt-2 text-sm text-stone-600">
-            Filter: {dimension && value ? `${dimension} = ${value}` : "all visible appointments"}
+            {t("filterLabel", { filter: filterText })}
           </p>
         </div>
         <div className="space-y-3">
@@ -218,12 +226,12 @@ export default async function DashboardExplorePage({
 
             return (
               <div key={appointment.id} className="rounded-2xl border border-stone-200 bg-white p-4">
-                <p className="font-medium text-stone-950">{client?.full_name ?? "Client appointment"}</p>
+                <p className="font-medium text-stone-950">{client?.full_name ?? t("clientAppointment")}</p>
                 <p className="mt-1 text-sm text-stone-600">
                   {appointment.scheduled_for} • {appointment.duration_minutes} min • {appointment.staff_member_name}
                 </p>
                 <p className="mt-1 text-sm text-stone-600">
-                  {appointment.location || "Location not set"} • {appointment.reminder_status}
+                  {appointment.location || t("locationNotSet")} • {appointment.reminder_status}
                 </p>
               </div>
             );
@@ -263,14 +271,14 @@ export default async function DashboardExplorePage({
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight text-stone-950">Explore approved access</h1>
+          <h1 className="text-3xl font-semibold tracking-tight text-stone-950">{t("exploreAccessTitle")}</h1>
         </div>
         <div className="space-y-3">
           {data?.map((entry) => (
             <div key={`${entry.email}-${entry.role}`} className="rounded-2xl border border-stone-200 bg-white p-4">
               <p className="font-medium text-stone-950">{entry.email}</p>
               <p className="mt-1 text-sm text-stone-600">
-                {entry.role} • {entry.is_active ? "active" : "inactive"}
+                {entry.role} • {entry.is_active ? t("filterActive") : t("filterInactive")}
               </p>
             </div>
           ))}
@@ -315,12 +323,14 @@ export default async function DashboardExplorePage({
     throw new Error(error.message);
   }
 
+  const filterText = dimension && value ? `${dimension} = ${value}` : t("filterAllService");
+
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-semibold tracking-tight text-stone-950">Explore service activity</h1>
+        <h1 className="text-3xl font-semibold tracking-tight text-stone-950">{t("exploreServiceTitle")}</h1>
         <p className="mt-2 text-sm text-stone-600">
-          Filter: {dimension && value ? `${dimension} = ${value}` : "all visible service activity"}
+          {t("filterLabel", { filter: filterText })}
         </p>
       </div>
       <div className="space-y-3">
@@ -337,7 +347,7 @@ export default async function DashboardExplorePage({
           return (
             <div key={entry.id} className="rounded-2xl border border-stone-200 bg-white p-4">
               <p className="font-medium text-stone-950">
-                {serviceType?.name ?? "Service"} • {client?.full_name ?? "Client"}
+                {serviceType?.name ?? "Service"} • {client?.full_name ?? t("clientFallback")}
               </p>
               <p className="mt-1 text-sm text-stone-600">
                 {entry.service_date} • {entry.staff_member_name}

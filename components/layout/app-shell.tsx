@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Headset, LayoutTemplate } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useTranslations, useLocale } from "next-intl";
 
 import type { Database } from "@/lib/database.types";
 import type { OrganizationSettings } from "@/lib/organization-settings";
@@ -12,6 +13,7 @@ import { cn } from "@/lib/utils";
 
 import { Badge } from "@/components/ui/badge";
 import { SignOutButton } from "@/components/layout/sign-out-button";
+import { LanguageSwitcher } from "@/components/layout/language-switcher";
 
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 
@@ -22,19 +24,6 @@ type AppShellProps = {
   setupComplete: boolean;
 };
 
-function getRoleLabel(role: Profile["role"]) {
-  switch (role) {
-    case "admin":
-      return "Administrator";
-    case "staff":
-      return "Staff workspace";
-    case "client":
-      return "Client portal";
-    default:
-      return role;
-  }
-}
-
 export function AppShell({
   children,
   organizationSettings,
@@ -43,6 +32,8 @@ export function AppShell({
 }: AppShellProps) {
   const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
+  const t = useTranslations("AppShell");
+  const locale = useLocale();
 
   useEffect(() => {
     function handleScroll() {
@@ -55,19 +46,28 @@ export function AppShell({
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  function getRoleLabel(role: Profile["role"]) {
+    switch (role) {
+      case "admin": return t("roleAdmin");
+      case "staff": return t("roleStaff");
+      case "client": return t("roleClient");
+      default: return role;
+    }
+  }
+
   const navItems =
     profile.role === "client"
-      ? [{ href: "/dashboard", label: "Dashboard" }]
+      ? [{ href: "/dashboard", label: t("navDashboard") }]
       : [
-          { href: "/dashboard", label: "Dashboard" },
-          { href: "/clients", label: "Clients" },
-          { href: "/clients/new", label: "New client" },
-          { href: "/services", label: "Voice notes" },
-          { href: "/schedule", label: "Schedule" },
+          { href: "/dashboard", label: t("navDashboard") },
+          { href: "/clients", label: t("navClients") },
+          { href: "/clients/new", label: t("navNewClient") },
+          { href: "/services", label: t("navVoiceNotes") },
+          { href: "/schedule", label: t("navSchedule") },
           ...(profile.role === "admin"
             ? [
-                { href: "/admin", label: "Admin" },
-                { href: "/setup", label: setupComplete ? "Setup" : "Setup guide" },
+                { href: "/admin", label: t("navAdmin") },
+                { href: "/setup", label: setupComplete ? t("navSetup") : t("navSetupGuide") },
               ]
             : []),
         ];
@@ -100,8 +100,12 @@ export function AppShell({
                   />
                 </>
               ) : (
-                <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-stone-200 bg-[color:var(--brand-primary)] text-sm font-semibold text-[color:var(--brand-primary-foreground)] shadow-sm">
-                  {organizationSettings.organization_name.slice(0, 2).toUpperCase()}
+                <div
+                  aria-label={organizationSettings.organization_name}
+                  className="flex h-11 w-11 items-center justify-center rounded-2xl border border-stone-200 bg-[color:var(--brand-primary)] text-sm font-semibold text-[color:var(--brand-primary-foreground)] shadow-sm"
+                  role="img"
+                >
+                  <span aria-hidden="true">{organizationSettings.organization_name.slice(0, 2).toUpperCase()}</span>
                 </div>
               )}
               <div className="min-w-0">
@@ -119,7 +123,7 @@ export function AppShell({
               </div>
             </div>
 
-            <nav className="flex flex-wrap justify-start gap-2 lg:justify-center">
+            <nav aria-label="Main navigation" className="flex flex-wrap justify-start gap-2 lg:justify-center">
               {navItems.map((item) => {
                 const isActive =
                   pathname === item.href ||
@@ -128,6 +132,7 @@ export function AppShell({
                 return (
                   <Link
                     key={item.href}
+                    aria-current={isActive ? "page" : undefined}
                     className={cn(
                       "rounded-full px-3.5 py-2 text-sm font-medium transition-colors",
                       isActive
@@ -144,13 +149,14 @@ export function AppShell({
             </nav>
 
             <div className="flex flex-wrap items-center justify-start gap-2 lg:justify-end">
+              <LanguageSwitcher currentLocale={locale} />
               <Badge className="brand-chip border-0 capitalize">{getRoleLabel(profile.role)}</Badge>
               {supportHref ? (
                 <Link
                   className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-stone-200 bg-white px-2.5 text-sm font-medium text-stone-900 transition-colors hover:bg-stone-100"
                   href={supportHref}
                 >
-                  <Headset className="size-4" />
+                  <Headset aria-hidden="true" className="size-4" />
                   {organizationSettings.support_cta_text}
                 </Link>
               ) : null}
@@ -163,8 +169,8 @@ export function AppShell({
                     borderColor: "rgb(var(--brand-primary-rgb) / 0.12)",
                   }}
                 >
-                  <LayoutTemplate className="size-4" />
-                  Finish setup
+                  <LayoutTemplate aria-hidden="true" className="size-4" />
+                  {t("finishSetup")}
                 </Link>
               ) : null}
               <div className="min-w-0 text-right text-sm text-stone-600">
@@ -178,7 +184,7 @@ export function AppShell({
           </div>
         </div>
       </header>
-      <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-6 lg:px-8">
+      <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-6 lg:px-8" id="main-content">
         {children}
       </main>
     </div>

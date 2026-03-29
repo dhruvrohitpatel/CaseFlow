@@ -1,5 +1,6 @@
 import { format } from "date-fns";
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 
 import { deleteAppointmentAction } from "@/app/actions/appointments";
 import { CreateAppointmentForm } from "@/components/forms/create-appointment-form";
@@ -20,7 +21,7 @@ export default async function SchedulePage({
   searchParams,
 }: SchedulePageProps) {
   const { supabase } = await requireRole(["admin", "staff"]);
-  const [{ today, thisWeek }, { data: clients, error: clientsError }, params] =
+  const [{ today, thisWeek }, { data: clients, error: clientsError }, params, t] =
     await Promise.all([
       getUpcomingAppointments(supabase),
       supabase
@@ -29,6 +30,7 @@ export default async function SchedulePage({
         .neq("status", "archived")
         .order("full_name", { ascending: true }),
       searchParams,
+      getTranslations("SchedulePage"),
     ]);
 
   if (clientsError) {
@@ -39,19 +41,19 @@ export default async function SchedulePage({
     <div className="space-y-6">
       {params.deleted === "1" ? (
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-          Appointment removed.
+          {t("successDeleted")}
         </div>
       ) : null}
       {params.error === "delete" ? (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          We could not delete that appointment. Try again.
+          {t("errorDelete")}
         </div>
       ) : null}
 
       <div>
-        <h1 className="text-3xl font-semibold tracking-tight text-stone-950">Schedule</h1>
+        <h1 className="text-3xl font-semibold tracking-tight text-stone-950">{t("pageTitle")}</h1>
         <p className="mt-2 text-sm text-stone-600">
-          Track upcoming appointments, reminder status, and the next week of visits.
+          {t("pageDescription")}
         </p>
       </div>
 
@@ -67,9 +69,9 @@ export default async function SchedulePage({
 
         <Card className="border-stone-200 shadow-sm">
           <CardHeader>
-            <CardTitle>Today</CardTitle>
+            <CardTitle>{t("todayCardTitle")}</CardTitle>
             <CardDescription>
-              Same-day appointments stay visible first so staff can prep quickly.
+              {t("todayCardDescription")}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -85,7 +87,7 @@ export default async function SchedulePage({
                         {format(new Date(appointment.scheduled_for), "h:mm a")} for {appointment.duration_minutes} minutes
                       </p>
                       <p className="mt-1 text-sm text-stone-600">
-                        {appointment.location || "Location not set"} with {appointment.staff_member_name}
+                        {appointment.location || t("locationNotSet")} with {appointment.staff_member_name}
                       </p>
                     </div>
                     <Badge className="capitalize" variant="outline">
@@ -98,14 +100,14 @@ export default async function SchedulePage({
                   <form action={deleteAppointmentAction} className="mt-4">
                     <input name="appointmentId" type="hidden" value={appointment.id} />
                     <Button type="submit" variant="ghost">
-                      Remove appointment
+                      {t("removeAppointment")}
                     </Button>
                   </form>
                 </div>
               ))
             ) : (
               <div className="rounded-2xl border border-dashed border-stone-300 bg-stone-50 px-6 py-10 text-center text-sm text-stone-600">
-                No appointments today.
+                {t("noAppointmentsToday")}
               </div>
             )}
           </CardContent>
@@ -114,9 +116,9 @@ export default async function SchedulePage({
 
       <Card className="border-stone-200 shadow-sm">
         <CardHeader>
-          <CardTitle>This week</CardTitle>
+          <CardTitle>{t("thisWeekCardTitle")}</CardTitle>
           <CardDescription>
-            Lightweight day-grouped layout for the next seven days. No drag-and-drop, just reliable visibility.
+            {t("thisWeekCardDescription")}
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 lg:grid-cols-2">
@@ -139,7 +141,7 @@ export default async function SchedulePage({
                             {format(new Date(appointment.scheduled_for), "h:mm a")} • {appointment.duration_minutes} min
                           </p>
                           <p className="mt-1 text-sm text-stone-600">
-                            {appointment.location || "Location not set"}
+                            {appointment.location || t("locationNotSet")}
                           </p>
                         </div>
                         <Badge className="capitalize" variant="outline">
@@ -149,7 +151,7 @@ export default async function SchedulePage({
                     </div>
                   ))
                 ) : (
-                  <p className="text-sm text-stone-500">No appointments scheduled.</p>
+                  <p className="text-sm text-stone-500">{t("noAppointmentsScheduled")}</p>
                 )}
               </div>
             </div>

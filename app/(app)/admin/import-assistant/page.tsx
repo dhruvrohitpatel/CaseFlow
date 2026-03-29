@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 
 import {
   analyzeImportAssistantAction,
@@ -21,35 +22,36 @@ type ImportAssistantPageProps = {
   }>;
 };
 
-function resolveError(error?: string, message?: string) {
-  if (message?.trim()) {
-    return message;
-  }
-
-  switch (error) {
-    case "admin-ai-disabled":
-      return "Premium admin AI is not enabled for this workspace.";
-    case "assistant-unavailable":
-      return "Premium admin AI is unavailable right now. Use the included templates and manual import workflow.";
-    case "missing-file":
-      return "Choose a CSV file before starting the import assistant.";
-    case "save-failed":
-      return "The import session could not be saved.";
-    case "session":
-      return "That import session could not be loaded.";
-    case "no-rows":
-      return "No normalized rows were available to import.";
-    default:
-      return error ? "The import assistant request failed." : null;
-  }
-}
-
 export default async function ImportAssistantPage({
   searchParams,
 }: ImportAssistantPageProps) {
   await requireRole(["admin"]);
   const adminAi = getAiFeatureState("admin_ai");
-  const params = await searchParams;
+  const [params, t] = await Promise.all([searchParams, getTranslations("ImportAssistantPage")]);
+
+  function resolveError(error?: string, message?: string) {
+    if (message?.trim()) {
+      return message;
+    }
+
+    switch (error) {
+      case "admin-ai-disabled":
+        return t("errorAdminAiDisabled");
+      case "assistant-unavailable":
+        return t("errorAssistantUnavailable");
+      case "missing-file":
+        return t("errorMissingFile");
+      case "save-failed":
+        return t("errorSaveFailed");
+      case "session":
+        return t("errorSession");
+      case "no-rows":
+        return t("errorNoRows");
+      default:
+        return error ? t("errorGeneric") : null;
+    }
+  }
+
   const supabase = createSupabaseAdminClient();
   const sessionId = params.session?.trim() || null;
   const [{ data: currentSession }, { data: recentSessions, error: recentError }] =
@@ -87,7 +89,7 @@ export default async function ImportAssistantPage({
     <div className="space-y-6">
       {params.imported === "1" ? (
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-          Import completed.
+          {t("successImported")}
         </div>
       ) : null}
       {errorMessage ? (
@@ -98,54 +100,54 @@ export default async function ImportAssistantPage({
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight text-stone-950">Import assistant</h1>
+          <h1 className="text-3xl font-semibold tracking-tight text-stone-950">{t("pageTitle")}</h1>
           <p className="mt-2 text-sm text-stone-600">
-            Download the standard templates, then use premium admin AI for mapping suggestions only when this workspace enables it.
+            {t("pageDescription")}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Link className="inline-flex h-9 items-center rounded-lg border border-stone-200 bg-white px-3 text-sm font-medium text-stone-900 hover:bg-stone-100" href="/admin">
-            Back to admin
+            {t("backToAdmin")}
           </Link>
           <Link className="inline-flex h-9 items-center rounded-lg border border-stone-200 bg-white px-3 text-sm font-medium text-stone-900 hover:bg-stone-100" href="/samples/demo-clients.csv">
-            Sample clients CSV
+            {t("sampleClientsCsv")}
           </Link>
           <Link className="inline-flex h-9 items-center rounded-lg border border-stone-200 bg-white px-3 text-sm font-medium text-stone-900 hover:bg-stone-100" href="/samples/demo-service-entries.csv">
-            Sample service CSV
+            {t("sampleServiceCsv")}
           </Link>
           <Link className="inline-flex h-9 items-center rounded-lg border border-stone-200 bg-white px-3 text-sm font-medium text-stone-900 hover:bg-stone-100" href="/samples/demo-appointments.csv">
-            Sample appointments CSV
+            {t("sampleAppointmentsCsv")}
           </Link>
         </div>
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <Badge variant="outline">Included in base</Badge>
+        <Badge variant="outline">{t("includedInBase")}</Badge>
         <Badge variant="outline">{adminAi.planLabel}</Badge>
       </div>
 
       <section className="grid gap-6 xl:grid-cols-[0.85fr_1.15fr]">
         <Card className="brand-card border shadow-sm">
           <CardHeader>
-            <CardTitle>Analyze CSV</CardTitle>
+            <CardTitle>{t("analyzeCardTitle")}</CardTitle>
             <CardDescription>
               {adminAi.enabled
-                ? "The model suggests the target entity and field mapping. The app validates and previews the rows before import."
-                : "Base plan guidance includes templates and manual preparation. AI-assisted mapping is optional premium admin AI."}
+                ? t("analyzeCardDescriptionAi")
+                : t("analyzeCardDescriptionBase")}
             </CardDescription>
           </CardHeader>
           <CardContent>
             {adminAi.enabled ? (
               <form action={analyzeImportAssistantAction} className="space-y-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-stone-950" htmlFor="csvFile">CSV file</label>
+                  <label className="text-sm font-medium text-stone-950" htmlFor="csvFile">{t("csvFileLabel")}</label>
                   <input accept=".csv,text/csv" className="block w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm text-stone-950" id="csvFile" name="csvFile" type="file" />
                 </div>
-                <Button type="submit">Analyze file</Button>
+                <Button type="submit">{t("analyzeButton")}</Button>
               </form>
             ) : (
               <div className="rounded-2xl border border-dashed border-stone-300 bg-[rgb(var(--brand-surface-rgb)/0.42)] px-5 py-6 text-sm text-stone-600">
-                AI-assisted CSV mapping is optional. Use the sample files on this page as the standard format for manual preparation, then return when premium admin AI is enabled.
+                {t("aiDisabledHint")}
               </div>
             )}
           </CardContent>
@@ -153,8 +155,8 @@ export default async function ImportAssistantPage({
 
         <Card className="brand-card border shadow-sm">
           <CardHeader>
-            <CardTitle>Recent sessions</CardTitle>
-            <CardDescription>Reopen a recent mapping session or review the current one below.</CardDescription>
+            <CardTitle>{t("recentSessionsTitle")}</CardTitle>
+            <CardDescription>{t("recentSessionsDescription")}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             {recentSessions?.length ? (
@@ -171,7 +173,7 @@ export default async function ImportAssistantPage({
               ))
             ) : (
               <div className="rounded-2xl border border-dashed border-stone-300 bg-[rgb(var(--brand-surface-rgb)/0.5)] px-6 py-10 text-sm text-stone-600">
-                No import sessions yet.
+                {t("emptyRecentSessions")}
               </div>
             )}
           </CardContent>
@@ -182,20 +184,20 @@ export default async function ImportAssistantPage({
         <section className="grid gap-6 xl:grid-cols-[0.8fr_1.2fr]">
           <Card className="brand-card border shadow-sm">
             <CardHeader>
-              <CardTitle>Review session</CardTitle>
+              <CardTitle>{t("reviewSessionTitle")}</CardTitle>
               <CardDescription>
                 Target entity: {currentSession.target_entity}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <p className="text-sm font-medium text-stone-950">Confidence summary</p>
+                <p className="text-sm font-medium text-stone-950">{t("confidenceSummaryLabel")}</p>
                 <p className="mt-2 text-sm text-stone-600">
-                  {String((currentSession.mapping_plan as { confidence_summary?: string })?.confidence_summary ?? "No summary")}
+                  {String((currentSession.mapping_plan as { confidence_summary?: string })?.confidence_summary ?? t("noSummary"))}
                 </p>
               </div>
               <div>
-                <p className="text-sm font-medium text-stone-950">Warnings</p>
+                <p className="text-sm font-medium text-stone-950">{t("warningsLabel")}</p>
                 <div className="mt-2 space-y-2">
                   {warnings.length ? warnings.map((warning) => (
                     <div key={warning} className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm text-stone-600">
@@ -203,7 +205,7 @@ export default async function ImportAssistantPage({
                     </div>
                   )) : (
                     <div className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm text-stone-600">
-                      No warnings.
+                      {t("noWarnings")}
                     </div>
                   )}
                 </div>
@@ -211,7 +213,7 @@ export default async function ImportAssistantPage({
               <form action={confirmImportAssistantAction}>
                 <input name="sessionId" type="hidden" value={currentSession.id} />
                 <Button disabled={currentSession.status === "imported"} type="submit">
-                  {currentSession.status === "imported" ? "Already imported" : "Confirm import"}
+                  {currentSession.status === "imported" ? t("alreadyImported") : t("confirmImport")}
                 </Button>
               </form>
             </CardContent>
@@ -220,16 +222,16 @@ export default async function ImportAssistantPage({
           <div className="space-y-6">
             <Card className="brand-card border shadow-sm">
             <CardHeader>
-              <CardTitle>Header mapping</CardTitle>
-              <CardDescription>AI suggested this mapping. The app applies it deterministically after review.</CardDescription>
+              <CardTitle>{t("headerMappingTitle")}</CardTitle>
+              <CardDescription>{t("headerMappingDescription")}</CardDescription>
             </CardHeader>
               <CardContent>
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Source header</TableHead>
-                      <TableHead>Target field</TableHead>
-                      <TableHead>Transform</TableHead>
+                      <TableHead>{t("tableHeadSourceHeader")}</TableHead>
+                      <TableHead>{t("tableHeadTargetField")}</TableHead>
+                      <TableHead>{t("tableHeadTransform")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -247,8 +249,8 @@ export default async function ImportAssistantPage({
 
             <Card className="brand-card border shadow-sm">
               <CardHeader>
-                <CardTitle>Preview rows</CardTitle>
-                <CardDescription>First 10 normalized rows that will be imported.</CardDescription>
+                <CardTitle>{t("previewRowsTitle")}</CardTitle>
+                <CardDescription>{t("previewRowsDescription")}</CardDescription>
               </CardHeader>
               <CardContent className="overflow-x-auto">
                 {previewRows.length ? (
@@ -272,7 +274,7 @@ export default async function ImportAssistantPage({
                   </Table>
                 ) : (
                   <div className="rounded-2xl border border-dashed border-stone-300 bg-[rgb(var(--brand-surface-rgb)/0.5)] px-6 py-10 text-sm text-stone-600">
-                    No preview rows were generated.
+                    {t("emptyPreviewRows")}
                   </div>
                 )}
               </CardContent>

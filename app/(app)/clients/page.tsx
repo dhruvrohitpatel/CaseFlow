@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Search, UserRoundPlus } from "lucide-react";
+import { getTranslations } from "next-intl/server";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,7 +20,7 @@ type ClientsPageProps = {
 
 export default async function ClientsPage({ searchParams }: ClientsPageProps) {
   const { supabase } = await requireRole(["admin", "staff"]);
-  const params = await searchParams;
+  const [params, t] = await Promise.all([searchParams, getTranslations("ClientsPage")]);
   const query = params.q?.trim() ?? "";
 
   let clientQuery = supabase
@@ -41,22 +42,22 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight text-stone-950">Clients</h1>
+          <h1 className="text-3xl font-semibold tracking-tight text-stone-950">{t("pageTitle")}</h1>
           <p className="mt-2 text-sm text-stone-600">
-            Search by name, review recent records, and open each client profile.
+            {t("pageDescription")}
           </p>
         </div>
         <Link className={primaryLinkClassName} href="/clients/new">
           <UserRoundPlus className="size-4" />
-          New client
+          {t("newClient")}
         </Link>
       </div>
 
       <Card className="border-stone-200 shadow-sm">
         <CardHeader>
-          <CardTitle>Client directory</CardTitle>
+          <CardTitle>{t("cardTitle")}</CardTitle>
           <CardDescription>
-            Default sorting is newest first so recently created clients stay easy to find.
+            {t("cardDescription")}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -67,11 +68,11 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
                 className="h-10 w-full rounded-lg border border-stone-200 bg-white pl-10 pr-3 text-sm outline-none transition-colors focus:border-stone-400"
                 defaultValue={query}
                 name="q"
-                placeholder="Search by full name"
+                placeholder={t("searchPlaceholder")}
               />
             </div>
             <Button type="submit" variant="outline">
-              Search
+              {t("searchButton")}
             </Button>
           </form>
 
@@ -80,12 +81,12 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
               <Table>
                 <TableHeader className="bg-stone-50">
                   <TableRow>
-                    <TableHead>Client</TableHead>
-                    <TableHead>Public ID</TableHead>
-                    <TableHead>Phone</TableHead>
-                    <TableHead>Language</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Open</TableHead>
+                    <TableHead>{t("tableHeadClient")}</TableHead>
+                    <TableHead>{t("tableHeadPublicId")}</TableHead>
+                    <TableHead>{t("tableHeadPhone")}</TableHead>
+                    <TableHead>{t("tableHeadLanguage")}</TableHead>
+                    <TableHead>{t("tableHeadStatus")}</TableHead>
+                    <TableHead className="text-right">{t("tableHeadOpen")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -95,12 +96,12 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
                         <div className="font-medium text-stone-950">{client.full_name}</div>
                       </TableCell>
                       <TableCell className="text-stone-600">{client.client_id}</TableCell>
-                      <TableCell className="text-stone-600">{client.phone ?? "Not provided"}</TableCell>
+                      <TableCell className="text-stone-600">{client.phone ?? t("phoneNotProvided")}</TableCell>
                       <TableCell className="text-stone-600">{client.preferred_language}</TableCell>
                       <TableCell className="capitalize text-stone-600">{client.status}</TableCell>
                       <TableCell className="text-right">
                         <Link className={ghostLinkClassName} href={`/clients/${client.client_id}`}>
-                          View profile
+                          {t("viewProfile")}
                         </Link>
                       </TableCell>
                     </TableRow>
@@ -111,12 +112,10 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
           ) : (
             <div className="rounded-2xl border border-dashed border-stone-300 bg-stone-50 px-6 py-12 text-center">
               <p className="text-base font-medium text-stone-900">
-                {query ? "No clients matched that search." : "No clients have been added yet."}
+                {query ? t("emptySearchTitle") : t("emptyTitle")}
               </p>
               <p className="mt-2 text-sm text-stone-600">
-                {query
-                  ? "Try a broader name search or clear the filter."
-                  : "Create the first client record to get the directory started."}
+                {query ? t("emptySearchDescription") : t("emptyDescription")}
               </p>
             </div>
           )}
