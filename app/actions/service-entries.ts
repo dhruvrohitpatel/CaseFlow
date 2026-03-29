@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
 import { type ActionState } from "@/lib/actions/form-state";
+import { generateEmbedding, serializeVector } from "@/lib/ai/embeddings";
 import { getStaffDisplayName, requireRole } from "@/lib/auth";
 import {
   getActiveCustomFieldDefinitions,
@@ -40,6 +41,13 @@ export async function createServiceEntryAction(
   const { profile, supabase, user } = await requireRole(["admin", "staff"]);
   const definitions = await getActiveCustomFieldDefinitions(supabase, "service_entry");
   const customFields = parseCustomFieldFormValues(definitions, formData);
+  let embedding: string | null = null;
+
+  try {
+    embedding = serializeVector(await generateEmbedding(parsed.data.notes));
+  } catch (error) {
+    console.error("Service-entry embedding generation failed:", error);
+  }
 
   if (!customFields.success) {
     return {
@@ -66,6 +74,7 @@ export async function createServiceEntryAction(
     .from("service_entries")
     .insert({
       client_id: client.id,
+      embedding,
       notes: parsed.data.notes,
       service_date: parsed.data.serviceDate,
       service_type_id: parsed.data.serviceTypeId,

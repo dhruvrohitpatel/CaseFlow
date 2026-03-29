@@ -9,6 +9,47 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      access_allowlist: {
+        Row: {
+          created_at: string;
+          created_by: string | null;
+          email: string;
+          id: string;
+          is_active: boolean;
+          linked_client_id: string | null;
+          notes: string | null;
+          role: Database["public"]["Enums"]["app_role"];
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          created_by?: string | null;
+          email: string;
+          id?: string;
+          is_active?: boolean;
+          linked_client_id?: string | null;
+          notes?: string | null;
+          role: Database["public"]["Enums"]["app_role"];
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["access_allowlist"]["Insert"]>;
+        Relationships: [
+          {
+            foreignKeyName: "access_allowlist_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "access_allowlist_linked_client_id_fkey";
+            columns: ["linked_client_id"];
+            isOneToOne: false;
+            referencedRelation: "clients";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       appointments: {
         Row: {
           client_id: string;
@@ -129,6 +170,7 @@ export type Database = {
           full_name: string;
           housing_status: string;
           id: string;
+          portal_profile_id: string | null;
           preferred_language: string;
           preferred_name: string | null;
           pronouns: string | null;
@@ -146,6 +188,7 @@ export type Database = {
           full_name: string;
           housing_status?: string;
           id?: string;
+          portal_profile_id?: string | null;
           preferred_language?: string;
           preferred_name?: string | null;
           pronouns?: string | null;
@@ -160,6 +203,13 @@ export type Database = {
             foreignKeyName: "clients_created_by_fkey";
             columns: ["created_by"];
             isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "clients_portal_profile_id_fkey";
+            columns: ["portal_profile_id"];
+            isOneToOne: true;
             referencedRelation: "profiles";
             referencedColumns: ["id"];
           },
@@ -227,6 +277,7 @@ export type Database = {
           email: string;
           full_name: string | null;
           id: string;
+          must_reset_password: boolean;
           role: Database["public"]["Enums"]["app_role"];
           updated_at: string;
         };
@@ -235,6 +286,7 @@ export type Database = {
           email: string;
           full_name?: string | null;
           id: string;
+          must_reset_password?: boolean;
           role?: Database["public"]["Enums"]["app_role"];
           updated_at?: string;
         };
@@ -245,6 +297,7 @@ export type Database = {
         Row: {
           client_id: string;
           created_at: string;
+          embedding: string | null;
           id: string;
           notes: string;
           service_date: string;
@@ -256,6 +309,7 @@ export type Database = {
         Insert: {
           client_id: string;
           created_at?: string;
+          embedding?: string | null;
           id?: string;
           notes: string;
           service_date: string;
@@ -347,6 +401,19 @@ export type Database = {
     };
     Views: Record<string, never>;
     Functions: {
+      current_app_role: {
+        Args: Record<string, never>;
+        Returns: Database["public"]["Enums"]["app_role"];
+      };
+      get_client_service_activity: {
+        Args: Record<string, never>;
+        Returns: {
+          service_date: string;
+          service_entry_id: string;
+          service_type_name: string;
+          staff_member_name: string;
+        }[];
+      };
       generate_client_id: {
         Args: Record<string, never>;
         Returns: string;
@@ -355,9 +422,30 @@ export type Database = {
         Args: Record<string, never>;
         Returns: boolean;
       };
+      is_staff_or_admin: {
+        Args: Record<string, never>;
+        Returns: boolean;
+      };
+      match_service_notes: {
+        Args: {
+          match_count?: number;
+          match_threshold?: number;
+          query_embedding: string;
+        };
+        Returns: {
+          client_name: string;
+          client_public_id: string;
+          note_preview: string;
+          notes: string;
+          service_date: string;
+          service_entry_id: string;
+          service_type_name: string;
+          similarity: number;
+        }[];
+      };
     };
     Enums: {
-      app_role: "admin" | "staff";
+      app_role: "admin" | "staff" | "client";
       client_status: "active" | "inactive" | "archived";
       custom_field_entity_type: "client" | "service_entry";
       custom_field_type: "text" | "textarea" | "number" | "date" | "select";

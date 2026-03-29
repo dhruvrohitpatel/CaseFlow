@@ -9,6 +9,8 @@ const serverEnvSchema = supabasePublicEnvSchema.extend({
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
 });
 
+const geminiApiKeySchema = z.string().min(1);
+
 export function getSupabasePublicEnv() {
   return supabasePublicEnvSchema.parse({
     NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
@@ -22,6 +24,10 @@ export function getServerEnv() {
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
     SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
   });
+}
+
+export function getGeminiApiKey() {
+  return geminiApiKeySchema.parse(process.env.GEMINI_API_KEY);
 }
 
 export function getAppUrl() {
