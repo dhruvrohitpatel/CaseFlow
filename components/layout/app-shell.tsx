@@ -20,6 +20,7 @@ const navItems = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/clients", label: "Clients" },
   { href: "/clients/new", label: "New client" },
+  { href: "/services", label: "Voice notes" },
 ];
 
 export function AppShell({ children, profile }: AppShellProps) {
