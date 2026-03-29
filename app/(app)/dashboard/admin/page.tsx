@@ -1,11 +1,16 @@
 import Link from "next/link";
-import { ArrowRight, Download, Printer, ShieldCheck, UsersRound } from "lucide-react";
+import { ArrowRight, CheckCircle2, Download, LayoutTemplate, Printer, ShieldCheck, UsersRound } from "lucide-react";
 
 import { ServiceTypeBarChart } from "@/components/dashboard/service-type-bar-chart";
 import { VisitTrendChart } from "@/components/dashboard/visit-trend-chart";
 import { SemanticSearch } from "@/components/search/semantic-search";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireRole } from "@/lib/auth";
+import {
+  getOrganizationSettings,
+  getSetupChecklist,
+  isSetupComplete,
+} from "@/lib/organization-settings";
 import { getDashboardReport } from "@/lib/reporting";
 
 const primaryLinkClassName =
@@ -16,27 +21,33 @@ const outlineLinkClassName =
 type DashboardPageProps = {
   searchParams: Promise<{
     error?: string;
+    setup?: string;
   }>;
 };
 
 export default async function AdminDashboardPage({
   searchParams,
 }: DashboardPageProps) {
-  const { profile, supabase } = await requireRole(["admin"]);
-  const [report, params, { count: teamAccessCount }, { count: portalCount }] = await Promise.all([
-    getDashboardReport(supabase),
-    searchParams,
-    supabase
-      .from("access_allowlist")
-      .select("*", { count: "exact", head: true })
-      .in("role", ["admin", "staff"])
-      .eq("is_active", true),
-    supabase
-      .from("access_allowlist")
-      .select("*", { count: "exact", head: true })
-      .eq("role", "client")
-      .eq("is_active", true),
-  ]);
+  const { supabase } = await requireRole(["admin"]);
+  const [report, params, settings, { count: teamAccessCount }, { count: portalCount }] =
+    await Promise.all([
+      getDashboardReport(supabase),
+      searchParams,
+      getOrganizationSettings(),
+      supabase
+        .from("access_allowlist")
+        .select("*", { count: "exact", head: true })
+        .in("role", ["admin", "staff"])
+        .eq("is_active", true),
+      supabase
+        .from("access_allowlist")
+        .select("*", { count: "exact", head: true })
+        .eq("role", "client")
+        .eq("is_active", true),
+    ]);
+  const setupChecklist = getSetupChecklist(settings);
+  const setupComplete = isSetupComplete(settings);
+  const completedSetupItems = setupChecklist.filter((step) => step.done).length;
 
   return (
     <div className="space-y-6">
@@ -45,12 +56,18 @@ export default async function AdminDashboardPage({
           That action is only available to admin users.
         </div>
       ) : null}
+      {params.setup === "complete" ? (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+          Setup completed. This workspace is ready for real admin onboarding and staff rollout.
+        </div>
+      ) : null}
 
       <section className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
-        <Card className="border-stone-200 shadow-sm">
+        <Card className="brand-card border shadow-sm">
           <CardHeader>
             <CardTitle className="text-2xl">
-              Mission control for {profile.full_name ?? "your team"}.
+              {settings.dashboard_headline ??
+                `Mission control for ${settings.organization_name}.`}
             </CardTitle>
             <CardDescription>
               Reporting, access oversight, and operational visibility for the people running the program.
@@ -69,36 +86,72 @@ export default async function AdminDashboardPage({
           </CardContent>
         </Card>
 
-        <Card className="border-stone-200 shadow-sm">
+        <Card className="brand-card border shadow-sm">
           <CardHeader>
-            <CardTitle>Access overview</CardTitle>
+            <CardTitle>{setupComplete ? "Access overview" : "Setup checklist"}</CardTitle>
             <CardDescription>
-              Keep onboarding and portal access deliberate instead of leaving accounts open to public signup.
+              {setupComplete
+                ? "Keep onboarding and portal access deliberate instead of leaving accounts open to public signup."
+                : "Finish the launch checklist so this deployment feels like a productized nonprofit workspace instead of a raw configuration."}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="rounded-2xl border border-stone-200 bg-stone-50 p-4">
-              <div className="flex items-center gap-2 text-sm font-medium text-stone-600">
-                <UsersRound className="size-4" />
-                Approved team access
-              </div>
-              <div className="mt-3 text-3xl font-semibold tracking-tight text-stone-950">
-                {teamAccessCount ?? 0}
-              </div>
-            </div>
-            <div className="rounded-2xl border border-stone-200 bg-stone-50 p-4">
-              <div className="flex items-center gap-2 text-sm font-medium text-stone-600">
-                <ShieldCheck className="size-4" />
-                Approved client access
-              </div>
-              <div className="mt-3 text-3xl font-semibold tracking-tight text-stone-950">
-                {portalCount ?? 0}
-              </div>
-            </div>
-            <Link className={outlineLinkClassName} href="/admin">
-              Open admin tools
-              <ArrowRight className="size-4" />
-            </Link>
+            {setupComplete ? (
+              <>
+                <div className="rounded-2xl border border-stone-200 bg-stone-50 p-4">
+                  <div className="flex items-center gap-2 text-sm font-medium text-stone-600">
+                    <UsersRound className="size-4" />
+                    Approved team access
+                  </div>
+                  <div className="mt-3 text-3xl font-semibold tracking-tight text-stone-950">
+                    {teamAccessCount ?? 0}
+                  </div>
+                </div>
+                <div className="rounded-2xl border border-stone-200 bg-stone-50 p-4">
+                  <div className="flex items-center gap-2 text-sm font-medium text-stone-600">
+                    <ShieldCheck className="size-4" />
+                    Approved client access
+                  </div>
+                  <div className="mt-3 text-3xl font-semibold tracking-tight text-stone-950">
+                    {portalCount ?? 0}
+                  </div>
+                </div>
+                <Link className={outlineLinkClassName} href="/admin">
+                  Open admin tools
+                  <ArrowRight className="size-4" />
+                </Link>
+              </>
+            ) : (
+              <>
+                <div className="rounded-2xl border border-stone-200 bg-stone-50 p-4">
+                  <div className="flex items-center gap-2 text-sm font-medium text-stone-600">
+                    <LayoutTemplate className="size-4" />
+                    Setup progress
+                  </div>
+                  <div className="mt-3 text-3xl font-semibold tracking-tight text-stone-950">
+                    {completedSetupItems}/{setupChecklist.length}
+                  </div>
+                  <p className="mt-2 text-sm text-stone-600">
+                    Branding, support details, access, starter data, and launch review should all be checked before rollout.
+                  </p>
+                </div>
+                <div className="space-y-3">
+                  {setupChecklist.slice(0, 4).map((step) => (
+                    <div key={step.id} className="flex items-start gap-3 rounded-2xl border border-stone-200 bg-stone-50 p-4">
+                      <CheckCircle2 className={`mt-0.5 size-4 ${step.done ? "text-emerald-600" : "text-stone-300"}`} />
+                      <div>
+                        <p className="font-medium text-stone-950">{step.title}</p>
+                        <p className="mt-1 text-sm text-stone-600">{step.description}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <Link className={outlineLinkClassName} href="/setup">
+                  Finish setup
+                  <ArrowRight className="size-4" />
+                </Link>
+              </>
+            )}
           </CardContent>
         </Card>
       </section>

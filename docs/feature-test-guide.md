@@ -1,199 +1,160 @@
 # Feature And Test Guide
 
-This guide summarizes what is implemented in CaseFlow today and how to verify it locally.
+This guide reflects the current CaseFlow productized build: branded deploy-per-org workspaces, setup wizard, allowlist auth, and role-based dashboards.
 
 ## Personas
 
 ### Admin
-- Sign in with an organization-provisioned account
-- Lands on `/dashboard/admin`
-- Can view reporting, exports, print view, admin tools, audit logs, configurable fields, CSV import, and account management
-- Can create staff accounts
-- Can create client portal accounts linked to existing clients
-- Can create client records and service entries
+- completes `/setup`
+- manages organization branding and support contact
+- approves emails and links client portal accounts
+- runs reporting, exports, audit review, and semantic search
 
 ### Staff
-- Sign in with an organization-provisioned account
-- Lands on `/dashboard/staff`
-- Can create client records
-- Can log service entries
-- Can use scheduling and client search/profile workflows
-- Cannot access admin tools, audit logs, exports, or account provisioning
+- manages intake, schedules, clients, and service logs
+- uses semantic search
+- does not access admin configuration or exports
 
 ### Client
-- Sign in with an invite-only linked portal account
-- Lands on `/dashboard/client`
-- Can view only their own case status, upcoming appointments, and recent service activity metadata
-- Cannot access staff/admin routes, exports, configurable fields, audit logs, or internal note bodies
+- sees read-only case status, upcoming appointments, and safe activity metadata
+- does not see internal note bodies or admin/staff routes
 
 ## Role matrix
 
 | Capability | Admin | Staff | Client |
 | --- | --- | --- | --- |
 | Public landing page | Yes | Yes | Yes |
-| Sign in | Yes | Yes | Yes |
-| Public signup | No | No | No |
-| Forced password reset | Yes | Yes | Yes |
+| Google-first sign-in | Yes | Yes | Yes |
+| Password fallback | Yes | Yes | Yes |
+| Setup wizard | Yes | No | No |
+| White-label branding controls | Yes | No | No |
 | Admin dashboard | Yes | No | No |
 | Staff dashboard | No | Yes | No |
 | Client dashboard | No | No | Yes |
 | Create client records | Yes | Yes | No |
-| Create staff accounts | Yes | No | No |
-| Create linked client portal accounts | Yes | No | No |
-| View client directory | Yes | Yes | No |
-| View own client portal data | No | No | Yes |
+| Manage allowlist | Yes | No | No |
 | CSV import/export | Yes | No | No |
+| Semantic note search | Yes | Yes | No |
 | Audit logs | Yes | No | No |
 
-## Implemented features
-
-### Public and auth flow
-- Public landing page at `/`
-- Sign-in-only login page at `/login`
-- Role-based dashboard routing via `/dashboard`
-- Admin-created temporary-password accounts
-- Forced reset flow at `/reset-password`
-
-### Internal operations
-- Client intake form
-- Client directory with search
-- Client profile with demographics and service history
-- Service logging with configurable service types
-- Scheduling with today and week views
-- Basic reporting and print-friendly dashboard
-
-### Admin tools
-- Client CSV import with row-level validation feedback
-- Client CSV export
-- Service log CSV export
-- Configurable client and service-entry fields
-- Audit log viewer
-- Staff account creation
-- Invite-only client portal account creation
-
-### Client portal
-- Read-only dashboard with:
-  - case status
-  - upcoming appointments
-  - recent service activity count
-  - last interaction date
-  - help/contact card
-  - recent activity timeline without raw notes
-
-## Local setup
+## Setup
 
 ```bash
 pnpm install
 cp .env.example .env.local
 ```
 
-Set these values in `.env.local`:
+Add:
 
 ```bash
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 NEXT_PUBLIC_SUPABASE_URL=...
 NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 SUPABASE_SERVICE_ROLE_KEY=...
+GEMINI_API_KEY=...
 ```
 
-Apply all SQL migrations in `supabase/migrations/` to your Supabase project, then seed:
+Then:
 
 ```bash
 pnpm seed
-```
-
-Run verification commands:
-
-```bash
+pnpm backfill:embeddings
 pnpm lint
 pnpm typecheck
 pnpm build
 pnpm dev
 ```
 
-## Demo credentials
+## Exact test steps
+
+### Public and login experience
+1. Open `/`.
+2. Confirm the page reads like a product portal, not an MVP demo.
+3. Confirm organization name, subtitle, and support CTA reflect `organization_settings`.
+4. Open `/login`.
+5. Confirm the page shows branding, welcome copy, a `Continue with Google` button, and a `Don't have Google email` fallback link.
+6. Open `/login/password`.
+7. Confirm the password page is clearly secondary to Google sign-in.
+
+### Setup wizard
+1. Sign in as `admin@caseflow.demo`.
+2. If setup is incomplete, confirm any protected admin route redirects to `/setup`.
+3. In `/setup`, save:
+   - organization name
+   - subtitle
+   - welcome copy
+   - brand colors
+   - support contact
+4. Confirm those changes update:
+   - `/`
+   - `/login`
+   - the app shell header
+5. Mark access, starter data, and launch steps complete.
+6. Confirm `/dashboard/admin` becomes the default destination after setup completion.
+
+### Sticky shell and product chrome
+1. Open `/dashboard/admin`, `/clients`, `/schedule`, and `/admin`.
+2. Scroll the page.
+3. Confirm the top header stays visible and gains a compact shadow state.
+4. Confirm the shell shows organization branding, primary nav, role label, and support CTA.
+
+### Admin operations
+1. Open `/dashboard/admin`.
+2. Confirm KPI cards, service mix, visit trend, semantic search, and access/setup cards render.
+3. Confirm `/admin` includes:
+   - allowlist management
+   - CSV import
+   - custom fields
+   - audit log viewer
+4. Confirm `/api/exports/clients` and `/api/exports/service-logs` still download for admin only.
+
+### Staff workflow
+1. Sign in as `staff@caseflow.demo`.
+2. Confirm `/dashboard` redirects to `/dashboard/staff`.
+3. Confirm staff sees quick actions, appointments, recent clients, recent service activity, and semantic search.
+4. Confirm staff can create clients and service entries.
+5. Confirm staff cannot access `/admin`, exports, or setup.
+
+### Client portal
+1. Sign in as `client@caseflow.demo`.
+2. Confirm `/dashboard` redirects to `/dashboard/client`.
+3. Confirm the support card reflects the configured organization support contact.
+4. Confirm the client sees only:
+   - case status
+   - upcoming appointments
+   - recent activity metadata
+   - last interaction
+5. Confirm internal notes remain hidden.
+
+### White-label behavior
+1. As admin, update the organization name, colors, and support CTA in `/setup`.
+2. Refresh `/`, `/login`, and a protected page.
+3. Confirm the new settings are applied consistently.
+4. Upload a logo and favicon.
+5. Confirm the shell and auth pages use the new logo.
+
+### Security and access
+1. Try `/api/search?q=housing` while signed out and confirm it is rejected.
+2. Try the same route as a `client` user and confirm it is rejected.
+3. Try `/admin` or `/setup` as `staff` or `client` and confirm redirect away.
+4. Try `/api/exports/clients` as `staff` and `client` and confirm unauthorized behavior.
+
+## Demo accounts
 
 - `admin@caseflow.demo`
 - `staff@caseflow.demo`
 - `client@caseflow.demo`
 
-Password for all demo users:
+Password:
 
 ```text
 CaseFlowDemo123!
 ```
 
-## Exact test steps
-
-### Public UX
-1. Open `http://localhost:3000/`.
-2. Confirm the page explains CaseFlow and has a clear `Sign in` action.
-3. Confirm unauthenticated visitors are not dropped straight into the app shell.
-
-### Login and reset flow
-1. Open `/login`.
-2. Confirm there is no public signup form.
-3. Confirm the page states accounts are provisioned by the organization.
-4. If you create a new managed account from `/admin`, sign in with the temporary password.
-5. Confirm the user is forced to `/reset-password`.
-6. Set a new password and confirm the user then lands on the correct dashboard.
-
-### Admin dashboard and tools
-1. Sign in as `admin@caseflow.demo`.
-2. Confirm `/dashboard` redirects to `/dashboard/admin`.
-3. Confirm KPI cards, service mix, visit trend, and access overview render.
-4. Confirm `/dashboard/print` loads.
-5. Confirm `/api/exports/clients` downloads as CSV.
-6. Confirm `/api/exports/service-logs` downloads as CSV.
-7. Open `/admin`.
-8. Confirm the page includes:
-   - staff account creation
-   - client portal account creation
-   - CSV import
-   - configurable fields
-   - audit log viewer
-9. Create a staff account and confirm the success message includes a temporary password.
-10. Create a client portal account for an unlinked client and confirm it appears in the linked client portal table.
-
-### Staff workflow
-1. Sign in as `staff@caseflow.demo`.
-2. Confirm `/dashboard` redirects to `/dashboard/staff`.
-3. Confirm the page shows today’s appointments, active clients, and recent service activity.
-4. Confirm staff can open `/clients`, `/clients/new`, and `/schedule`.
-5. Create a client record.
-6. Open that client profile and add a service entry.
-7. Confirm the service entry appears at the top of the service history.
-
-### Client portal
-1. Sign in as `client@caseflow.demo`.
-2. Confirm `/dashboard` redirects to `/dashboard/client`.
-3. Confirm the client sees:
-   - current case status
-   - upcoming appointments
-   - recent activity count
-   - last interaction date
-4. Confirm the recent activity timeline shows date, service type, and staff member only.
-5. Confirm internal note bodies are not visible.
-
-### Access control checks
-1. As `staff`, try to open `/admin`.
-2. Confirm the user is redirected away from admin-only pages.
-3. As `client`, try to open:
-   - `/admin`
-   - `/clients`
-   - `/schedule`
-   - `/api/exports/clients`
-4. Confirm those routes are blocked.
-5. As `client`, confirm only the linked client record is visible through the portal dashboard.
-
 ## Deferred intentionally
 
-- invitation emails
-- password reset email automation
-- public self-service signup
-- client messaging
-- document uploads
-- OCR and AI workflows
+- arbitrary page-builder layout editing
+- advanced spreadsheet migration mapping
 - recurring appointments
-- advanced reporting drilldowns
-- PDF generation
+- invitation email automation
+- client messaging and uploads

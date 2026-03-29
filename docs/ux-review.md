@@ -1,79 +1,78 @@
 # UX Review
 
-This review reflects the current CaseFlow implementation after the public landing page, role-based dashboards, invite-only client portal, and admin-managed account flow were added.
+This review reflects the current productized CaseFlow build after adding white-label settings, a setup wizard, sticky app shell, and stronger public/auth positioning.
 
-## Priority findings
+## Highest-priority improvements shipped now
 
-### 1. Public entry experience was previously too abrupt
-- Severity: High
-- Why it hurt: Sending every visitor straight into auth made the product feel unfinished and gave no context to nonprofit teams or clients.
-- Fixed now: `/` is a public landing page with role-specific value statements and a direct sign-in CTA.
-- Deferred: richer public content, screenshots, or a formal about/contact section.
+### 1. The app shell now feels like a product, not a project
+- Severity before: High
+- Why it hurt: The previous shell looked like a thin internal demo with a flat nav bar and little organizational identity.
+- Fixed now: The protected app uses a sticky header with clear brand placement, persistent navigation, support CTA, role badge, and product-level shell hierarchy.
+- Deferred: richer account menu, notifications, and contextual search in the shell.
 
-### 2. Login previously mixed product marketing with public signup
-- Severity: High
-- Why it hurt: The old flow implied anyone could create staff access, which is both confusing and unsafe for a case-management system.
-- Fixed now: `/login` is sign-in only, with clear copy that accounts are provisioned by the organization.
-- Deferred: passwordless sign-in or branded organization-specific login pages.
+### 2. Branding is now a first-class configuration surface
+- Severity before: High
+- Why it hurt: A nonprofit-facing product cannot feel reusable if the org name, copy, and visuals are hard-coded.
+- Fixed now: `organization_settings` drives name, subtitle, support contact, logo, favicon, colors, and welcome copy across the landing page, login, shell, and admin experience.
+- Deferred: arbitrary layout builders and deeper per-page content overrides.
 
-### 3. One shared dashboard created role confusion
-- Severity: High
-- Why it hurt: Admins, staff, and clients do not need the same starting page. One dashboard increased cognitive load and risked showing the wrong information to the wrong role.
-- Fixed now: `/dashboard` routes users to `/dashboard/admin`, `/dashboard/staff`, or `/dashboard/client`.
-- Deferred: deeper personalization within each dashboard.
+### 3. Admin onboarding is now guided instead of improvised
+- Severity before: High
+- Why it hurt: Non-technical admins were expected to jump between auth, branding, imports, and access management without a controlled launch path.
+- Fixed now: `/setup` provides a branded setup wizard with branding, organization details, access review, starter-data planning, and launch steps.
+- Deferred: deeper spreadsheet-to-schema migration assistance and automated invite email workflows.
 
-### 4. Client-safe visibility was missing
-- Severity: High
-- Why it hurt: A client-facing portal cannot safely expose internal notes, operational exports, or audit tools.
-- Fixed now: client users only see case status, upcoming appointments, recent activity metadata, and contact guidance. Internal note bodies are intentionally hidden.
-- Deferred: client messaging, document sharing, and richer self-service actions.
+### 4. Public and auth pages now sound like a product platform
+- Severity before: High
+- Why it hurt: MVP and hackathon language undermines trust when the audience is a real nonprofit operator.
+- Fixed now: `/` and `/login` focus on branded product messaging, role-aware value, and a calmer portal entry point.
+- Deferred: a richer marketing site with case studies, screenshots, and pricing or implementation tiers.
 
-### 5. Account creation was too open
-- Severity: High
-- Why it hurt: CaseFlow handles sensitive data. Allowing public signup would undermine trust and open the door to accidental or malicious misuse.
-- Fixed now: only admins can create staff and client portal accounts, and those accounts are provisioned with temporary passwords plus forced reset.
-- Deferred: invitation emails and bulk staff onboarding.
+### 5. Setup state is now visible on the admin dashboard
+- Severity before: Medium
+- Why it hurt: Once admins left setup, there was no obvious reminder of what still needed to happen before rollout.
+- Fixed now: the admin dashboard shows a setup checklist card until launch is marked complete.
+- Deferred: post-launch operational health cards and success metrics for the first 30 days.
 
-### 6. Admin actions were hard to discover from the dashboard
+## Weak points that still matter
+
+### 6. Admin tools are still dense
 - Severity: Medium
-- Why it hurt: Reporting existed, but account management, exports, and audits were buried in separate places.
-- Fixed now: the admin dashboard highlights exports, print view, admin tools, account management, and audit/config controls.
-- Deferred: dedicated admin navigation subsections and saved reports.
+- Why it hurts: `/admin` contains access, CSV tools, custom fields, and audit logs in one dense surface.
+- Fixed in this pass: clearer workspace profile summary and setup entry point.
+- Deferred: split admin tools into subroutes if usage expands.
 
-### 7. Staff needed a cleaner operational home
+### 7. White-labeling is strong, but not yet deep content management
 - Severity: Medium
-- Why it hurt: Staff benefit from immediate access to today’s work, not admin reports.
-- Fixed now: the staff dashboard centers appointments, recent clients, recent service activity, and quick actions.
-- Deferred: a personal caseload view filtered to the current staff member.
+- Why it hurts: Some nonprofits will want distinct public messaging or client-specific instructions beyond a few configurable text blocks.
+- Fixed in this pass: org name, subtitle, welcome copy, support CTA, colors, logo, and favicon.
+- Deferred: richer content sections and role-specific copy management.
 
-### 8. Feedback around account state was incomplete
+### 8. No built-in implementation concierge
 - Severity: Medium
-- Why it hurt: Users created by admins need a clear first-login path, and admins need to know which accounts are still pending reset.
-- Fixed now: forced reset routing is in place, and the admin account table shows whether reset is still pending.
-- Deferred: resend/reset controls and last-login visibility.
+- Why it hurts: Deploy-per-org is simpler than multi-tenant SaaS, but non-technical nonprofits still need a predictable launch package and operator handoff.
+- Fixed in this pass: provisioning and onboarding docs, setup wizard, and launch-package framing.
+- Deferred: a scripted deploy bootstrap or formal operator CLI.
 
-### 9. Security-sensitive actions needed stronger guardrails
-- Severity: High
-- Why it hurt: Export routes and client data access were too broad for a mixed-role portal.
-- Fixed now: export endpoints are admin-only, client portal access is limited to the linked record, and the migration tightens RLS for clients, appointments, service entries, and configuration.
-- Deferred: automated penetration testing and rate limiting beyond Supabase defaults.
-
-## Additional weaknesses still worth addressing
-
-### 10. Admin page is becoming dense
-- Severity: Medium
-- Why it hurts: CSV import, dynamic fields, account management, and audit logs all live on one page. That is workable now, but the page is approaching the upper limit of what feels calm.
-- Fixed now: the sections are grouped and labeled clearly.
-- Deferred: split admin into subpages if usage grows.
-
-### 11. Client portal support messaging is generic
+### 9. Client portal still feels intentionally minimal
 - Severity: Low
-- Why it hurts: Clients benefit from explicit contact details, office hours, and escalation guidance.
-- Fixed now: there is a simple support/help card and organization name hook.
-- Deferred: configurable org contact info, crisis guidance, and multilingual copy.
+- Why it hurts: Minimal is good for safety, but some organizations will want clearer instructions, office hours, and contact escalation guidance.
+- Fixed in this pass: support contact and branded copy can now be configured and appear in the portal context.
+- Deferred: richer client-facing help content and multilingual portal content.
 
-### 12. No dedicated security review automation
-- Severity: Medium
-- Why it hurts: Least-privilege design is stronger now, but the repo still relies on manual review rather than repeatable security checks.
-- Fixed now: baseline headers, stricter role checks, and admin-only export/account flows are implemented.
-- Deferred: security checklist automation, dependency scanning, and formal threat modeling.
+### 10. Visual system can still mature further
+- Severity: Low
+- Why it hurts: The new shell is more product-like, but some card layouts still carry early-project spacing and hierarchy patterns.
+- Fixed in this pass: stronger header, better gradients, branded surfaces, and more consistent calm-product styling.
+- Deferred: a fuller design token pass across every dashboard and table-heavy screen.
+
+## Additional product suggestions
+
+- Add an admin-only “organization preview” modal that shows landing, login, and portal states side by side before launch.
+- Add a first-30-days checklist card after setup completes:
+  - add all staff
+  - import active clients
+  - test client portal
+  - confirm support contact
+- Add a lightweight operator script for spinning up a new nonprofit deployment from a checklist and env template.
+- Add small reusable empty states with role-specific language so blank dashboards still feel intentional.

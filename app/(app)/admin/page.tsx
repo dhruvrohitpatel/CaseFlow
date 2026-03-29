@@ -18,6 +18,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { getAllCustomFieldDefinitions } from "@/lib/custom-fields";
 import { requireRole } from "@/lib/auth";
+import { getOrganizationSettings, isSetupComplete } from "@/lib/organization-settings";
 
 type AdminPageProps = {
   searchParams: Promise<{
@@ -56,8 +57,9 @@ export default async function AdminPage({
     auditQuery = auditQuery.eq("entity_type", entityFilter);
   }
 
-  const [definitions, { data: auditLogs, error: auditError }] = await Promise.all([
+  const [definitions, settings, { data: auditLogs, error: auditError }] = await Promise.all([
     getAllCustomFieldDefinitions(supabase),
+    getOrganizationSettings(),
     auditQuery,
   ]);
 
@@ -99,6 +101,7 @@ export default async function AdminPage({
         id: client.id,
         label: `${client.full_name} (${client.client_id})`,
       })) ?? [];
+  const setupComplete = isSetupComplete(settings);
 
   return (
     <div className="space-y-6">
@@ -141,6 +144,9 @@ export default async function AdminPage({
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Link className={outlineLinkClassName} href="/setup">
+            {setupComplete ? "Reopen setup guide" : "Open setup guide"}
+          </Link>
           <Link className={outlineLinkClassName} href="/api/templates/clients">
             Download CSV template
           </Link>
@@ -149,6 +155,28 @@ export default async function AdminPage({
           </Link>
         </div>
       </div>
+
+      <Card className="brand-card border shadow-sm">
+        <CardHeader>
+          <CardTitle>Workspace profile</CardTitle>
+          <CardDescription>
+            Keep branding, setup, and admin operations connected so each nonprofit deployment feels consistent.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4 md:grid-cols-[1fr_auto_auto] md:items-center">
+          <div>
+            <div className="text-lg font-semibold text-stone-950">{settings.organization_name}</div>
+            <p className="mt-1 text-sm text-stone-600">{settings.product_subtitle}</p>
+            <p className="mt-2 text-sm text-stone-500">
+              Support contact: {settings.support_email ?? settings.support_phone ?? "Not configured yet"}
+            </p>
+          </div>
+          <Badge className="brand-chip border-0">{setupComplete ? "Launch ready" : "Setup in progress"}</Badge>
+          <Link className={outlineLinkClassName} href="/setup">
+            Update branding
+          </Link>
+        </CardContent>
+      </Card>
 
       <section className="grid gap-6 xl:grid-cols-2">
         <ApproveTeamAccessForm />

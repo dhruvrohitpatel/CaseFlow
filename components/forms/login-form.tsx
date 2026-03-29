@@ -7,25 +7,26 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 
 type LoginFormProps = {
   defaultEmail?: string | undefined;
+  organizationName: string;
 };
 
-export function LoginForm({ defaultEmail }: LoginFormProps) {
+export function LoginForm({ defaultEmail, organizationName }: LoginFormProps) {
   const passwordFallbackHref = defaultEmail
     ? `/login/password?email=${encodeURIComponent(defaultEmail)}`
     : "/login/password";
 
   return (
-    <Card className="border-stone-200 shadow-sm">
+    <Card className="brand-card border shadow-sm">
       <CardHeader>
-        <CardTitle>Sign in</CardTitle>
+        <CardTitle>Sign in to {organizationName}</CardTitle>
         <CardDescription>
-          Use Google OAuth as the primary sign-in path. If your organization uses password login instead, open the fallback screen.
+          Google is the primary sign-in path. Use the fallback screen only if your organization approved password access for the same email.
         </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
           <Link
-            className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-stone-900 px-4 text-sm font-medium text-white transition-colors hover:bg-stone-800"
+            className="brand-primary-button inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg px-4 text-sm font-medium transition-colors"
             href="/auth/google"
           >
             Continue with Google
@@ -38,7 +39,7 @@ export function LoginForm({ defaultEmail }: LoginFormProps) {
             Don&apos;t have Google email
           </Link>
           <p className="text-center text-xs leading-5 text-stone-500">
-            Organizations can keep this screen minimal and use their own branding, logo, welcome copy, and support details here.
+            This portal is configured by the organization, so the login experience can be white-labeled without changing the underlying CaseFlow platform.
           </p>
         </div>
       </CardContent>

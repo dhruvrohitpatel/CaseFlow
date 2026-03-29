@@ -2,8 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Headset, LayoutTemplate, LifeBuoy } from "lucide-react";
+import { useEffect, useState } from "react";
 
 import type { Database } from "@/lib/database.types";
+import type { OrganizationSettings } from "@/lib/organization-settings";
+import { getSupportHref } from "@/lib/organization-settings";
 import { cn } from "@/lib/utils";
 
 import { Badge } from "@/components/ui/badge";
@@ -13,11 +17,44 @@ type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 
 type AppShellProps = {
   children: React.ReactNode;
+  organizationSettings: OrganizationSettings;
   profile: Profile;
+  setupComplete: boolean;
 };
 
-export function AppShell({ children, profile }: AppShellProps) {
+function getRoleLabel(role: Profile["role"]) {
+  switch (role) {
+    case "admin":
+      return "Administrator";
+    case "staff":
+      return "Staff workspace";
+    case "client":
+      return "Client portal";
+    default:
+      return role;
+  }
+}
+
+export function AppShell({
+  children,
+  organizationSettings,
+  profile,
+  setupComplete,
+}: AppShellProps) {
   const pathname = usePathname();
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    function handleScroll() {
+      setScrolled(window.scrollY > 12);
+    }
+
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
   const navItems =
     profile.role === "client"
       ? [{ href: "/dashboard", label: "Dashboard" }]
@@ -27,57 +64,139 @@ export function AppShell({ children, profile }: AppShellProps) {
           { href: "/clients/new", label: "New client" },
           { href: "/schedule", label: "Schedule" },
           ...(profile.role === "admin"
-            ? [{ href: "/admin", label: "Admin" }]
+            ? [
+                { href: "/admin", label: "Admin" },
+                { href: "/setup", label: setupComplete ? "Setup" : "Setup guide" },
+              ]
             : []),
         ];
 
+  const supportHref = getSupportHref(organizationSettings);
+
   return (
-    <div className="min-h-screen bg-stone-100">
-      <header className="border-b border-stone-200 bg-white/95 backdrop-blur">
+    <div className="min-h-screen">
+      <header
+        className={cn(
+          "sticky top-0 z-40 border-b border-stone-200/80 bg-white/88 backdrop-blur-xl transition-all duration-200",
+          scrolled ? "shadow-[0_10px_30px_rgba(28,25,23,0.08)]" : "",
+        )}
+      >
         <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 py-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <Link className="text-lg font-semibold tracking-tight text-stone-950" href="/dashboard">
-                CaseFlow
-              </Link>
-              <p className="text-sm text-stone-600">
-                {profile.role === "client"
-                  ? "A simple read-only portal for appointments and status updates."
-                  : "Low-friction client and service tracking for nonprofit teams."}
-              </p>
+          <div
+            className={cn(
+              "grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:items-center",
+              scrolled ? "lg:gap-3" : "lg:gap-5",
+            )}
+          >
+            <div className="flex items-center gap-3">
+              {organizationSettings.logo_url ? (
+                <>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    alt={`${organizationSettings.organization_name} logo`}
+                    className="h-11 w-11 rounded-2xl border border-stone-200 bg-white object-cover shadow-sm"
+                    src={organizationSettings.logo_url}
+                  />
+                </>
+              ) : (
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-stone-200 bg-[color:var(--brand-primary)] text-sm font-semibold text-[color:var(--brand-primary-foreground)] shadow-sm">
+                  {organizationSettings.organization_name.slice(0, 2).toUpperCase()}
+                </div>
+              )}
+              <div className="min-w-0">
+                <Link
+                  className="block truncate text-lg font-semibold tracking-tight text-stone-950"
+                  href="/dashboard"
+                >
+                  {organizationSettings.organization_name}
+                </Link>
+                <p className="truncate text-sm text-stone-600">
+                  {profile.role === "client"
+                    ? organizationSettings.login_welcome_text
+                    : organizationSettings.product_subtitle}
+                </p>
+              </div>
             </div>
-            <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center">
-              <Badge className="capitalize" variant="secondary">
-                {profile.role}
-              </Badge>
-              <div className="text-sm text-stone-600">
-                {profile.full_name ?? profile.email}
+
+            <nav className="flex flex-wrap justify-start gap-2 lg:justify-center">
+              {navItems.map((item) => {
+                const isActive =
+                  pathname === item.href ||
+                  (item.href !== "/dashboard" && pathname.startsWith(`${item.href}/`));
+
+                return (
+                  <Link
+                    key={item.href}
+                    className={cn(
+                      "rounded-full px-3.5 py-2 text-sm font-medium transition-colors",
+                      isActive
+                        ? "text-[color:var(--brand-primary-foreground)] shadow-sm"
+                        : "bg-stone-100 text-stone-700 hover:bg-stone-200",
+                    )}
+                    href={item.href}
+                    style={isActive ? { backgroundColor: "var(--brand-primary)" } : undefined}
+                  >
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </nav>
+
+            <div className="flex flex-wrap items-center justify-start gap-2 lg:justify-end">
+              <Badge className="brand-chip border-0 capitalize">{getRoleLabel(profile.role)}</Badge>
+              {supportHref ? (
+                <Link
+                  className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-stone-200 bg-white px-2.5 text-sm font-medium text-stone-900 transition-colors hover:bg-stone-100"
+                  href={supportHref}
+                >
+                  <Headset className="size-4" />
+                  {organizationSettings.support_cta_text}
+                </Link>
+              ) : (
+                <span className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-dashed border-stone-300 px-2.5 text-sm text-stone-500">
+                  <LifeBuoy className="size-4" />
+                  Add support contact in setup
+                </span>
+              )}
+              {profile.role === "admin" && !setupComplete ? (
+                <Link
+                  className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border px-2.5 text-sm font-medium text-stone-900 transition-colors hover:bg-white"
+                  href="/setup"
+                  style={{
+                    backgroundColor: "rgb(var(--brand-accent-rgb) / 0.42)",
+                    borderColor: "rgb(var(--brand-primary-rgb) / 0.12)",
+                  }}
+                >
+                  <LayoutTemplate className="size-4" />
+                  Finish setup
+                </Link>
+              ) : null}
+              <div className="min-w-0 text-right text-sm text-stone-600">
+                <div className="truncate font-medium text-stone-950">
+                  {profile.full_name ?? profile.email}
+                </div>
+                <div className="truncate text-xs text-stone-500">{profile.email}</div>
               </div>
               <SignOutButton />
             </div>
           </div>
-          <nav className="flex flex-wrap gap-2">
-            {navItems.map((item) => {
-              const isActive =
-                pathname === item.href ||
-                pathname.startsWith(`${item.href}/`);
-
-              return (
-                <Link
-                  key={item.href}
-                  className={cn(
-                    "rounded-full px-3 py-2 text-sm font-medium transition-colors",
-                    isActive
-                      ? "bg-stone-900 text-white"
-                      : "bg-stone-100 text-stone-700 hover:bg-stone-200",
-                  )}
-                  href={item.href}
-                >
-                  {item.label}
-                </Link>
-              );
-            })}
-          </nav>
+          {profile.role === "admin" ? (
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-stone-200 bg-white/72 px-4 py-3 text-sm text-stone-600">
+              <div>
+                <div className="font-medium text-stone-950">
+                  {setupComplete
+                    ? "This workspace is packaged for a single nonprofit deployment."
+                    : "Finish the setup guide to turn this into a branded nonprofit workspace."}
+                </div>
+                <p className="mt-1">
+                  Keep branding, onboarding, imports, and support contact centralized so each deployment feels intentional instead of improvised.
+                </p>
+              </div>
+              <span className="text-xs font-medium uppercase tracking-[0.18em] text-stone-500">
+                Powered by CaseFlow
+              </span>
+            </div>
+          ) : null}
         </div>
       </header>
       <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-6 lg:px-8">

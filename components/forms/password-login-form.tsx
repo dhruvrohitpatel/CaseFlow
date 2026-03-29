@@ -19,7 +19,7 @@ export function PasswordLoginForm({ defaultEmail }: PasswordLoginFormProps) {
   const [state, formAction] = useActionState(signInAction, initialActionState);
 
   return (
-    <Card className="border-stone-200 shadow-sm">
+    <Card className="brand-card border shadow-sm">
       <CardHeader>
         <CardTitle>Password login</CardTitle>
         <CardDescription>

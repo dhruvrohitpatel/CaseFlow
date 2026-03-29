@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { randomUUID } from "node:crypto";
 
 import type { ActionState } from "@/lib/actions/form-state";
 import { normalizeEmail } from "@/lib/access-allowlist";
@@ -12,7 +13,13 @@ import {
   toSelectOptionsJson,
 } from "@/lib/custom-fields";
 import { parseClientCsvImport } from "@/lib/csv";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createAccessAllowlistEntrySchema } from "@/lib/validators/access-allowlist";
+import {
+  organizationBrandingSchema,
+  organizationDetailsSchema,
+  type SetupProgress,
+} from "@/lib/validators/organization-settings";
 
 export type CsvImportState = {
   imported?: number;
@@ -26,6 +33,95 @@ function getFieldErrors(error: {
   flatten: () => { fieldErrors: Record<string, string[]> };
 }) {
   return error.flatten().fieldErrors;
+}
+
+const BRANDING_BUCKET = "branding-assets";
+
+function normalizeSetupProgress(value: unknown): SetupProgress {
+  const record = (value ?? {}) as Record<string, boolean | undefined>;
+
+  return {
+    access: record.access === true,
+    branding: record.branding === true,
+    details: record.details === true,
+    imports: record.imports === true,
+    launch: record.launch === true,
+  };
+}
+
+async function getOrganizationSettingsRow() {
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("organization_settings")
+    .select("*")
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  if (data) {
+    return data;
+  }
+
+  const { data: created, error: createError } = await supabase
+    .from("organization_settings")
+    .insert({
+      organization_name: "CaseFlow",
+    })
+    .select("*")
+    .single();
+
+  if (createError) {
+    throw new Error(createError.message);
+  }
+
+  return created;
+}
+
+async function uploadBrandAsset(file: File, prefix: "logo" | "favicon") {
+  const allowedTypes = new Set(["image/png", "image/jpeg", "image/webp", "image/svg+xml", "image/x-icon"]);
+
+  if (!allowedTypes.has(file.type)) {
+    throw new Error("Upload a PNG, JPG, WEBP, SVG, or ICO file.");
+  }
+
+  if (file.size > 2 * 1024 * 1024) {
+    throw new Error("Keep branding files under 2 MB.");
+  }
+
+  const extension = file.name.includes(".") ? file.name.split(".").pop()?.toLowerCase() : undefined;
+  const safeExtension = extension && extension.length <= 5 ? extension : "png";
+  const path = `${prefix}/${randomUUID()}.${safeExtension}`;
+  const bytes = await file.arrayBuffer();
+  const supabase = createSupabaseAdminClient();
+  const { error } = await supabase.storage
+    .from(BRANDING_BUCKET)
+    .upload(path, bytes, {
+      contentType: file.type,
+      upsert: false,
+    });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const { data } = supabase.storage.from(BRANDING_BUCKET).getPublicUrl(path);
+
+  return data.publicUrl;
+}
+
+function revalidateBrandingSurfaces() {
+  revalidatePath("/");
+  revalidatePath("/login");
+  revalidatePath("/login/password");
+  revalidatePath("/dashboard/admin");
+  revalidatePath("/dashboard/staff");
+  revalidatePath("/dashboard/client");
+  revalidatePath("/admin");
+  revalidatePath("/setup");
 }
 
 export async function importClientsCsvAction(
@@ -383,4 +479,194 @@ export async function deleteAllowlistEntryAction(formData: FormData) {
   revalidatePath("/admin");
   revalidatePath("/dashboard/admin");
   redirect("/admin?accessDeleted=1");
+}
+
+export async function updateOrganizationBrandingAction(
+  _previousState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const parsed = organizationBrandingSchema.safeParse({
+    accentColor: formData.get("accentColor"),
+    dashboardHeadline: formData.get("dashboardHeadline"),
+    organizationName: formData.get("organizationName"),
+    primaryColor: formData.get("primaryColor"),
+    productSubtitle: formData.get("productSubtitle"),
+    publicWelcomeText: formData.get("publicWelcomeText"),
+    surfaceTint: formData.get("surfaceTint"),
+  });
+
+  if (!parsed.success) {
+    return {
+      fieldErrors: getFieldErrors(parsed.error),
+      message: "Fix the highlighted branding fields and try again.",
+      status: "error",
+    };
+  }
+
+  await requireRole(["admin"]);
+
+  try {
+    const settings = await getOrganizationSettingsRow();
+    let logoUrl = settings.logo_url;
+    let faviconUrl = settings.favicon_url;
+
+    const logoFile = formData.get("logoFile");
+    if (logoFile instanceof File && logoFile.size > 0) {
+      logoUrl = await uploadBrandAsset(logoFile, "logo");
+    }
+
+    const faviconFile = formData.get("faviconFile");
+    if (faviconFile instanceof File && faviconFile.size > 0) {
+      faviconUrl = await uploadBrandAsset(faviconFile, "favicon");
+    }
+
+    const currentProgress = normalizeSetupProgress(settings.setup_progress);
+    const supabase = createSupabaseAdminClient();
+    const { error } = await supabase
+      .from("organization_settings")
+      .update({
+        accent_color: parsed.data.accentColor,
+        dashboard_headline: parsed.data.dashboardHeadline,
+        favicon_url: faviconUrl,
+        logo_url: logoUrl,
+        organization_name: parsed.data.organizationName,
+        primary_color: parsed.data.primaryColor,
+        product_subtitle: parsed.data.productSubtitle,
+        public_welcome_text: parsed.data.publicWelcomeText,
+        setup_progress: {
+          ...currentProgress,
+          branding: true,
+        },
+        surface_tint: parsed.data.surfaceTint,
+      })
+      .eq("id", settings.id);
+
+    if (error) {
+      return {
+        message: error.message,
+        status: "error",
+      };
+    }
+  } catch (error) {
+    return {
+      message: error instanceof Error ? error.message : "We could not save those branding settings.",
+      status: "error",
+    };
+  }
+
+  revalidateBrandingSurfaces();
+
+  return {
+    message: "Branding updated. The app shell, landing page, and login screens now use these settings.",
+    status: "success",
+  };
+}
+
+export async function updateOrganizationDetailsAction(
+  _previousState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const parsed = organizationDetailsSchema.safeParse({
+    approvedDomainGuidance: formData.get("approvedDomainGuidance"),
+    loginWelcomeText: formData.get("loginWelcomeText"),
+    supportCtaText: formData.get("supportCtaText"),
+    supportEmail: formData.get("supportEmail"),
+    supportPhone: formData.get("supportPhone"),
+  });
+
+  if (!parsed.success) {
+    return {
+      fieldErrors: getFieldErrors(parsed.error),
+      message: "Fix the highlighted organization details and try again.",
+      status: "error",
+    };
+  }
+
+  await requireRole(["admin"]);
+
+  try {
+    const settings = await getOrganizationSettingsRow();
+    const currentProgress = normalizeSetupProgress(settings.setup_progress);
+    const supabase = createSupabaseAdminClient();
+    const { error } = await supabase
+      .from("organization_settings")
+      .update({
+        approved_domain_guidance: parsed.data.approvedDomainGuidance,
+        login_welcome_text: parsed.data.loginWelcomeText,
+        setup_progress: {
+          ...currentProgress,
+          details: true,
+        },
+        support_cta_text: parsed.data.supportCtaText,
+        support_email: parsed.data.supportEmail,
+        support_phone: parsed.data.supportPhone,
+      })
+      .eq("id", settings.id);
+
+    if (error) {
+      return {
+        message: error.message,
+        status: "error",
+      };
+    }
+  } catch (error) {
+    return {
+      message:
+        error instanceof Error
+          ? error.message
+          : "We could not save the organization details.",
+      status: "error",
+    };
+  }
+
+  revalidateBrandingSurfaces();
+
+  return {
+    message: "Organization details updated.",
+    status: "success",
+  };
+}
+
+export async function markSetupStepAction(formData: FormData) {
+  const step = String(formData.get("step") ?? "");
+  const value = String(formData.get("value") ?? "true") === "true";
+
+  if (!["access", "imports", "launch"].includes(step)) {
+    redirect("/setup?error=step");
+  }
+
+  await requireRole(["admin"]);
+
+  try {
+    const settings = await getOrganizationSettingsRow();
+    const currentProgress = normalizeSetupProgress(settings.setup_progress);
+    const nextProgress = {
+      ...currentProgress,
+      [step]: value,
+    };
+    const supabase = createSupabaseAdminClient();
+    const { error } = await supabase
+      .from("organization_settings")
+      .update({
+        setup_completed_at:
+          nextProgress.branding &&
+          nextProgress.details &&
+          nextProgress.access &&
+          nextProgress.imports &&
+          nextProgress.launch
+            ? new Date().toISOString()
+            : null,
+        setup_progress: nextProgress,
+      })
+      .eq("id", settings.id);
+
+    if (error) {
+      redirect("/setup?error=step");
+    }
+  } catch {
+    redirect("/setup?error=step");
+  }
+
+  revalidateBrandingSurfaces();
+  redirect(step === "launch" && value ? "/dashboard/admin?setup=complete" : "/setup?saved=1");
 }

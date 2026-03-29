@@ -1,5 +1,9 @@
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
+
 import { AppShell } from "@/components/layout/app-shell";
-import { requireAppSession } from "@/lib/auth";
+import { getDashboardPathForRole, requireAppSession } from "@/lib/auth";
+import { getOrganizationSettings, isSetupComplete } from "@/lib/organization-settings";
 
 type ProtectedLayoutProps = {
   children: React.ReactNode;
@@ -8,10 +12,25 @@ type ProtectedLayoutProps = {
 export default async function ProtectedLayout({
   children,
 }: ProtectedLayoutProps) {
-  const { profile } = await requireAppSession();
+  const [{ profile }, settings, requestHeaders] = await Promise.all([
+    requireAppSession(),
+    getOrganizationSettings(),
+    headers(),
+  ]);
+  const pathname = requestHeaders.get("x-pathname") ?? "";
+  const setupComplete = isSetupComplete(settings);
+  const isSetupRoute = pathname.startsWith("/setup");
+
+  if (profile.role === "admin" && !setupComplete && !isSetupRoute) {
+    redirect("/setup");
+  }
+
+  if (profile.role !== "admin" && isSetupRoute) {
+    redirect(getDashboardPathForRole(profile.role));
+  }
 
   return (
-    <AppShell profile={profile}>
+    <AppShell organizationSettings={settings} profile={profile} setupComplete={setupComplete}>
       {children}
     </AppShell>
   );

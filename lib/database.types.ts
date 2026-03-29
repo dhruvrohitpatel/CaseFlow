@@ -257,15 +257,45 @@ export type Database = {
       };
       organization_settings: {
         Row: {
+          accent_color: string;
+          approved_domain_guidance: string;
           created_at: string;
+          dashboard_headline: string | null;
+          favicon_url: string | null;
           id: string;
+          login_welcome_text: string;
+          logo_url: string | null;
           organization_name: string;
+          primary_color: string;
+          product_subtitle: string;
+          public_welcome_text: string;
+          setup_completed_at: string | null;
+          setup_progress: Json;
+          support_cta_text: string;
+          support_email: string | null;
+          support_phone: string | null;
+          surface_tint: string;
           updated_at: string;
         };
         Insert: {
+          accent_color?: string;
+          approved_domain_guidance?: string;
           created_at?: string;
+          dashboard_headline?: string | null;
+          favicon_url?: string | null;
           id?: string;
+          login_welcome_text?: string;
+          logo_url?: string | null;
           organization_name?: string;
+          primary_color?: string;
+          product_subtitle?: string;
+          public_welcome_text?: string;
+          setup_completed_at?: string | null;
+          setup_progress?: Json;
+          support_cta_text?: string;
+          support_email?: string | null;
+          support_phone?: string | null;
+          surface_tint?: string;
           updated_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["organization_settings"]["Insert"]>;

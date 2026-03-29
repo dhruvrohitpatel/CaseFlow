@@ -13,7 +13,7 @@ export default async function ClientDashboardPage() {
   ] = await Promise.all([
     supabase
       .from("organization_settings")
-      .select("organization_name")
+      .select("organization_name, login_welcome_text, support_email, support_phone, support_cta_text")
       .limit(1)
       .maybeSingle(),
     supabase
@@ -37,6 +37,11 @@ export default async function ClientDashboardPage() {
   const nextAppointment = upcomingAppointments?.[0] ?? null;
   const recentActivity = serviceActivity ?? [];
   const lastInteraction = recentActivity[0]?.service_date ?? null;
+  const supportHref = organizationSettings?.support_email
+    ? `mailto:${organizationSettings.support_email}`
+    : organizationSettings?.support_phone
+      ? `tel:${organizationSettings.support_phone.replace(/[^\d+]/g, "")}`
+      : null;
 
   return (
     <div className="space-y-6">
@@ -47,7 +52,8 @@ export default async function ClientDashboardPage() {
               Welcome, {client.preferred_name ?? client.full_name}.
             </CardTitle>
             <CardDescription>
-              This portal gives you a safe read-only view of your status, upcoming appointments, and recent support activity.
+              {organizationSettings?.login_welcome_text ??
+                "This portal gives you a safe read-only view of your status, upcoming appointments, and recent support activity."}
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4 sm:grid-cols-2">
@@ -97,6 +103,13 @@ export default async function ClientDashboardPage() {
             <p>
               Reach out to your assigned staff member or the organization directly if your appointment details look wrong or your situation changes.
             </p>
+            {supportHref ? (
+              <p>
+                <a className="font-medium text-stone-900 underline-offset-4 hover:underline" href={supportHref}>
+                  {organizationSettings?.support_cta_text ?? "Contact support"}
+                </a>
+              </p>
+            ) : null}
             {nextAppointment ? (
               <div className="rounded-2xl border border-stone-200 bg-stone-50 p-4">
                 <p className="text-sm font-semibold text-stone-950">Next appointment</p>
