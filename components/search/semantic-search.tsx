@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { Search } from "lucide-react";
 
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 
 type SearchResult = {
@@ -19,9 +20,17 @@ type SearchResult = {
 
 type SemanticSearchProps = {
   description: string;
+  enabled?: boolean;
+  planLabel?: string;
+  unavailableMessage?: string;
 };
 
-export function SemanticSearch({ description }: SemanticSearchProps) {
+export function SemanticSearch({
+  description,
+  enabled = true,
+  planLabel,
+  unavailableMessage,
+}: SemanticSearchProps) {
   const [query, setQuery] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -80,6 +89,24 @@ export function SemanticSearch({ description }: SemanticSearchProps) {
       }
     };
   }, [query]);
+
+  if (!enabled) {
+    return (
+      <div className="space-y-4">
+        <p className="text-sm text-stone-600">{description}</p>
+        <div className="rounded-2xl border border-dashed border-stone-300 bg-[rgb(var(--brand-surface-rgb)/0.42)] px-5 py-6">
+          <div className="flex flex-wrap items-center gap-2">
+            {planLabel ? <Badge variant="outline">{planLabel}</Badge> : null}
+            <p className="text-sm font-medium text-stone-950">Semantic search is optional</p>
+          </div>
+          <p className="mt-3 text-sm leading-6 text-stone-600">
+            {unavailableMessage ??
+              "Semantic search is available as a premium search add-on for internal admin and staff teams."}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">

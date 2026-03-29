@@ -1,12 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { CheckCircle2, Circle, ExternalLink, Sparkles, Upload } from "lucide-react";
 
 import {
   applyThemeDraftAction,
-  applyThemePresetAction,
   generateThemeDraftAction,
   markSetupStepAction,
   updateOrganizationBrandingAction,
@@ -33,6 +32,9 @@ type SetupStep = {
 
 type OrganizationSetupFormsProps = {
   accessCount: number;
+  adminAiEnabled: boolean;
+  adminAiPlanLabel: string;
+  adminAiUnavailableMessage: string;
   organizationSettings: OrganizationSettings;
   steps: readonly SetupStep[];
   themeDrafts: Array<{
@@ -50,6 +52,19 @@ function FieldError({ message }: { message?: string }) {
   }
 
   return <p className="text-sm text-red-700">{message}</p>;
+}
+
+function getReadableTextColor(hex: string) {
+  const sanitized = hex.replace("#", "");
+  const red = Number.parseInt(sanitized.slice(0, 2), 16) / 255;
+  const green = Number.parseInt(sanitized.slice(2, 4), 16) / 255;
+  const blue = Number.parseInt(sanitized.slice(4, 6), 16) / 255;
+  const [r, g, b] = [red, green, blue].map((channel) =>
+    channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4,
+  );
+  const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+
+  return luminance > 0.55 ? "#1c1917" : "#fafaf9";
 }
 
 function SetupStepButton({
@@ -87,6 +102,9 @@ function SetupStepButton({
 
 export function OrganizationSetupForms({
   accessCount,
+  adminAiEnabled,
+  adminAiPlanLabel,
+  adminAiUnavailableMessage,
   organizationSettings,
   steps,
   themeDrafts,
@@ -104,13 +122,57 @@ export function OrganizationSetupForms({
     initialActionState,
   );
   const completedSteps = steps.filter((step) => step.done).length;
+  const [brandingValues, setBrandingValues] = useState({
+    accentColor: organizationSettings.accent_color,
+    borderColor: organizationSettings.border_color,
+    canvasColor: organizationSettings.canvas_color,
+    cardColor: organizationSettings.card_color,
+    dashboardHeadline: organizationSettings.dashboard_headline ?? "",
+    fontPairKey: organizationSettings.font_pair_key,
+    imageryPrompt: organizationSettings.imagery_prompt ?? "",
+    organizationName: organizationSettings.organization_name,
+    primaryColor: organizationSettings.primary_color,
+    productSubtitle: organizationSettings.product_subtitle,
+    publicWelcomeText: organizationSettings.public_welcome_text,
+    surfaceTint: organizationSettings.surface_tint,
+    themePresetKey: organizationSettings.theme_preset_key,
+  });
+  const previewTextColor = getReadableTextColor(brandingValues.cardColor);
+  const previewMutedColor = previewTextColor === "#fafaf9" ? "#d6d3d1" : "#57534e";
+
+  function updateBrandingValue<Key extends keyof typeof brandingValues>(
+    key: Key,
+    value: (typeof brandingValues)[Key],
+  ) {
+    setBrandingValues((current) => ({ ...current, [key]: value }));
+  }
+
+  function applyPresetLocally(key: keyof typeof themePresets) {
+    const preset = themePresets[key];
+
+    setBrandingValues((current) => ({
+      ...current,
+      accentColor: preset.recipe.accent_color,
+      borderColor: preset.recipe.border_color,
+      canvasColor: preset.recipe.canvas_color,
+      cardColor: preset.recipe.card_color,
+      fontPairKey: preset.recipe.font_pair_key,
+      imageryPrompt: preset.recipe.imagery_prompt ?? "",
+      primaryColor: preset.recipe.primary_color,
+      surfaceTint: preset.recipe.surface_tint,
+      themePresetKey: preset.recipe.theme_preset_key,
+    }));
+  }
 
   return (
     <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
       <div className="space-y-6">
         <Card className="brand-card">
           <CardHeader>
-            <CardTitle>1. Branding</CardTitle>
+            <div className="flex flex-wrap items-center gap-2">
+              <CardTitle>1. Branding</CardTitle>
+              <Badge variant="outline">Included in base</Badge>
+            </div>
             <CardDescription>
               Set the organization name, theme, and brand assets. These settings update the public site, login screens, and dashboard shell.
             </CardDescription>
@@ -119,23 +181,24 @@ export function OrganizationSetupForms({
             <form action={brandingAction} className="space-y-4">
               <div className="space-y-3">
                 <Label>Theme preset</Label>
+                <p className="text-sm text-stone-600">
+                  Select a preset to update the preview instantly. Save branding once when the theme is ready.
+                </p>
                 <div className="grid gap-3 md:grid-cols-2">
                   {Object.entries(themePresets).map(([key, preset]) => (
                     <button
                       key={key}
                       className={`rounded-2xl border p-4 text-left transition-colors ${
-                        organizationSettings.theme_preset_key === key
+                        brandingValues.themePresetKey === key
                           ? "border-stone-900 bg-[rgb(var(--brand-surface-rgb)/0.5)]"
                           : "border-stone-200 bg-white hover:bg-stone-50"
                       }`}
-                      formAction={applyThemePresetAction}
-                      name="themePresetKey"
-                      type="submit"
-                      value={key}
+                      onClick={() => applyPresetLocally(key as keyof typeof themePresets)}
+                      type="button"
                     >
                       <div className="flex items-center justify-between gap-3">
                         <p className="font-medium text-stone-950">{preset.label}</p>
-                        {organizationSettings.theme_preset_key === key ? (
+                        {brandingValues.themePresetKey === key ? (
                           <Badge className="brand-chip border-0">Active</Badge>
                         ) : null}
                       </div>
@@ -157,41 +220,41 @@ export function OrganizationSetupForms({
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="organizationName">Organization name</Label>
-                  <Input defaultValue={organizationSettings.organization_name} id="organizationName" name="organizationName" />
+                  <Input id="organizationName" name="organizationName" onChange={(event) => updateBrandingValue("organizationName", event.target.value)} value={brandingValues.organizationName} />
                   <FieldError message={brandingState.fieldErrors?.organizationName?.[0]} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="dashboardHeadline">Dashboard headline override</Label>
-                  <Input defaultValue={organizationSettings.dashboard_headline ?? ""} id="dashboardHeadline" name="dashboardHeadline" placeholder="Operations overview for Community Bridge" />
+                  <Input id="dashboardHeadline" name="dashboardHeadline" onChange={(event) => updateBrandingValue("dashboardHeadline", event.target.value)} placeholder="Operations overview for Community Bridge" value={brandingValues.dashboardHeadline} />
                 </div>
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="productSubtitle">Product subtitle</Label>
-                <Input defaultValue={organizationSettings.product_subtitle} id="productSubtitle" name="productSubtitle" />
+                <Input id="productSubtitle" name="productSubtitle" onChange={(event) => updateBrandingValue("productSubtitle", event.target.value)} value={brandingValues.productSubtitle} />
                 <FieldError message={brandingState.fieldErrors?.productSubtitle?.[0]} />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="publicWelcomeText">Public welcome text</Label>
-                <Textarea defaultValue={organizationSettings.public_welcome_text} id="publicWelcomeText" name="publicWelcomeText" rows={4} />
+                <Textarea id="publicWelcomeText" name="publicWelcomeText" onChange={(event) => updateBrandingValue("publicWelcomeText", event.target.value)} rows={4} value={brandingValues.publicWelcomeText} />
                 <FieldError message={brandingState.fieldErrors?.publicWelcomeText?.[0]} />
               </div>
 
               <div className="grid gap-4 md:grid-cols-3">
                 <div className="space-y-2">
                   <Label htmlFor="primaryColor">Primary color</Label>
-                  <Input defaultValue={organizationSettings.primary_color} id="primaryColor" name="primaryColor" type="color" />
+                  <Input id="primaryColor" name="primaryColor" onChange={(event) => updateBrandingValue("primaryColor", event.target.value)} type="color" value={brandingValues.primaryColor} />
                   <FieldError message={brandingState.fieldErrors?.primaryColor?.[0]} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="accentColor">Accent color</Label>
-                  <Input defaultValue={organizationSettings.accent_color} id="accentColor" name="accentColor" type="color" />
+                  <Input id="accentColor" name="accentColor" onChange={(event) => updateBrandingValue("accentColor", event.target.value)} type="color" value={brandingValues.accentColor} />
                   <FieldError message={brandingState.fieldErrors?.accentColor?.[0]} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="surfaceTint">Surface tint</Label>
-                  <Input defaultValue={organizationSettings.surface_tint} id="surfaceTint" name="surfaceTint" type="color" />
+                  <Input id="surfaceTint" name="surfaceTint" onChange={(event) => updateBrandingValue("surfaceTint", event.target.value)} type="color" value={brandingValues.surfaceTint} />
                   <FieldError message={brandingState.fieldErrors?.surfaceTint?.[0]} />
                 </div>
               </div>
@@ -199,17 +262,17 @@ export function OrganizationSetupForms({
               <div className="grid gap-4 md:grid-cols-3">
                 <div className="space-y-2">
                   <Label htmlFor="canvasColor">Canvas color</Label>
-                  <Input defaultValue={organizationSettings.canvas_color} id="canvasColor" name="canvasColor" type="color" />
+                  <Input id="canvasColor" name="canvasColor" onChange={(event) => updateBrandingValue("canvasColor", event.target.value)} type="color" value={brandingValues.canvasColor} />
                   <FieldError message={brandingState.fieldErrors?.canvasColor?.[0]} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="cardColor">Card color</Label>
-                  <Input defaultValue={organizationSettings.card_color} id="cardColor" name="cardColor" type="color" />
+                  <Input id="cardColor" name="cardColor" onChange={(event) => updateBrandingValue("cardColor", event.target.value)} type="color" value={brandingValues.cardColor} />
                   <FieldError message={brandingState.fieldErrors?.cardColor?.[0]} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="borderColor">Border color</Label>
-                  <Input defaultValue={organizationSettings.border_color} id="borderColor" name="borderColor" type="color" />
+                  <Input id="borderColor" name="borderColor" onChange={(event) => updateBrandingValue("borderColor", event.target.value)} type="color" value={brandingValues.borderColor} />
                   <FieldError message={brandingState.fieldErrors?.borderColor?.[0]} />
                 </div>
               </div>
@@ -219,9 +282,10 @@ export function OrganizationSetupForms({
                   <Label htmlFor="themePresetKey">Selected theme mode</Label>
                   <select
                     className="flex h-10 w-full rounded-lg border border-stone-200 bg-white px-3 text-sm text-stone-950 outline-none transition-colors focus:border-stone-400"
-                    defaultValue={organizationSettings.theme_preset_key}
                     id="themePresetKey"
                     name="themePresetKey"
+                    onChange={(event) => updateBrandingValue("themePresetKey", event.target.value as typeof brandingValues.themePresetKey)}
+                    value={brandingValues.themePresetKey}
                   >
                     <option value="day">Day</option>
                     <option value="night">Night</option>
@@ -235,9 +299,10 @@ export function OrganizationSetupForms({
                   <Label htmlFor="fontPairKey">Typography</Label>
                   <select
                     className="flex h-10 w-full rounded-lg border border-stone-200 bg-white px-3 text-sm text-stone-950 outline-none transition-colors focus:border-stone-400"
-                    defaultValue={organizationSettings.font_pair_key}
                     id="fontPairKey"
                     name="fontPairKey"
+                    onChange={(event) => updateBrandingValue("fontPairKey", event.target.value)}
+                    value={brandingValues.fontPairKey}
                   >
                     {Object.keys(fontPairTokens).map((fontKey) => (
                       <option key={fontKey} value={fontKey}>
@@ -252,11 +317,12 @@ export function OrganizationSetupForms({
               <div className="space-y-2">
                 <Label htmlFor="imageryPrompt">Imagery direction</Label>
                 <Textarea
-                  defaultValue={organizationSettings.imagery_prompt ?? ""}
                   id="imageryPrompt"
                   name="imageryPrompt"
+                  onChange={(event) => updateBrandingValue("imageryPrompt", event.target.value)}
                   placeholder="Documentary photography, neighborhood service centers, clear operational signage."
                   rows={3}
+                  value={brandingValues.imageryPrompt}
                 />
                 <FieldError message={brandingState.fieldErrors?.imageryPrompt?.[0]} />
               </div>
@@ -285,31 +351,42 @@ export function OrganizationSetupForms({
 
         <Card className="brand-card">
           <CardHeader>
-            <CardTitle>Theme generator</CardTitle>
+            <div className="flex flex-wrap items-center gap-2">
+              <CardTitle>Theme generator</CardTitle>
+              <Badge variant="outline">{adminAiPlanLabel}</Badge>
+            </div>
             <CardDescription>
-              Describe the organization and visual direction. The generated draft stays review-only until you apply it.
+              {adminAiEnabled
+                ? "Describe the organization and visual direction. The generated draft stays review-only until you apply it."
+                : "Preset themes and manual branding are included in base. AI theme drafts are optional."}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <form action={themeDraftAction} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="themePrompt">Theme prompt</Label>
-                <Textarea
-                  id="themePrompt"
-                  name="themePrompt"
-                  placeholder="Housing nonprofit serving families. Use a darker workspace with strong contrast, warm neutrals, and clear field-operations styling."
-                  rows={4}
+            {adminAiEnabled ? (
+              <form action={themeDraftAction} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="themePrompt">Theme prompt</Label>
+                  <Textarea
+                    id="themePrompt"
+                    name="themePrompt"
+                    placeholder="Housing nonprofit serving families. Use a darker workspace with strong contrast, warm neutrals, and clear field-operations styling."
+                    rows={4}
+                  />
+                </div>
+                <FormMessage
+                  message={themeDraftState.message}
+                  tone={themeDraftState.status === "success" ? "success" : "error"}
                 />
+                <SubmitButton pendingLabel="Generating draft...">
+                  <Sparkles className="size-4" />
+                  Generate theme draft
+                </SubmitButton>
+              </form>
+            ) : (
+              <div className="rounded-2xl border border-dashed border-stone-300 bg-[rgb(var(--brand-surface-rgb)/0.42)] px-5 py-6 text-sm text-stone-600">
+                {adminAiUnavailableMessage} Preset themes and manual branding controls stay available in every workspace.
               </div>
-              <FormMessage
-                message={themeDraftState.message}
-                tone={themeDraftState.status === "success" ? "success" : "error"}
-              />
-              <SubmitButton pendingLabel="Generating draft...">
-                <Sparkles className="size-4" />
-                Generate theme draft
-              </SubmitButton>
-            </form>
+            )}
 
             <div className="space-y-3">
               <p className="text-sm font-medium text-stone-950">Recent drafts</p>
@@ -459,7 +536,14 @@ export function OrganizationSetupForms({
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="rounded-3xl border border-stone-200 bg-white p-5 shadow-sm">
+            <div
+              className="rounded-3xl border p-5 shadow-sm"
+              style={{
+                backgroundColor: brandingValues.cardColor,
+                borderColor: brandingValues.borderColor,
+                color: previewTextColor,
+              }}
+            >
               <div className="flex items-center gap-3">
                 {organizationSettings.logo_url ? (
                   <>
@@ -482,20 +566,27 @@ export function OrganizationSetupForms({
                   </div>
                 )}
                 <div>
-                  <p className="text-sm font-medium uppercase tracking-[0.18em] text-stone-500">Portal preview</p>
-                  <p className="text-lg font-semibold text-stone-950">{organizationSettings.organization_name}</p>
+                  <p className="text-sm font-medium uppercase tracking-[0.18em]" style={{ color: previewMutedColor }}>Portal preview</p>
+                  <p className="text-lg font-semibold" style={{ color: previewTextColor }}>{brandingValues.organizationName}</p>
                 </div>
               </div>
-              <p className="mt-4 text-sm leading-6 text-stone-600">{organizationSettings.login_welcome_text}</p>
-              <div className="mt-4 inline-flex rounded-full px-3 py-2 text-sm font-medium" style={{ backgroundColor: organizationSettings.primary_color, color: "var(--brand-primary-foreground)" }}>
+              <p className="mt-4 text-sm leading-6" style={{ color: previewMutedColor }}>{organizationSettings.login_welcome_text}</p>
+              <div className="mt-4 inline-flex rounded-full px-3 py-2 text-sm font-medium" style={{ backgroundColor: brandingValues.primaryColor, color: getReadableTextColor(brandingValues.primaryColor) }}>
                 Continue with Google
               </div>
             </div>
 
-            <div className="rounded-3xl border border-stone-200 bg-white p-5 shadow-sm">
-              <p className="text-sm font-medium uppercase tracking-[0.18em] text-stone-500">Support card preview</p>
-              <p className="mt-3 text-lg font-semibold text-stone-950">{organizationSettings.support_cta_text}</p>
-              <p className="mt-2 text-sm leading-6 text-stone-600">
+            <div
+              className="rounded-3xl border p-5 shadow-sm"
+              style={{
+                backgroundColor: brandingValues.cardColor,
+                borderColor: brandingValues.borderColor,
+                color: previewTextColor,
+              }}
+            >
+              <p className="text-sm font-medium uppercase tracking-[0.18em]" style={{ color: previewMutedColor }}>Support card preview</p>
+              <p className="mt-3 text-lg font-semibold" style={{ color: previewTextColor }}>{organizationSettings.support_cta_text}</p>
+              <p className="mt-2 text-sm leading-6" style={{ color: previewMutedColor }}>
                 {organizationSettings.support_email || organizationSettings.support_phone || "Add a support email or phone number so staff and clients know where to ask for help."}
               </p>
             </div>

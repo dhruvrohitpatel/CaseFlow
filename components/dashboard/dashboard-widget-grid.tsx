@@ -2,6 +2,7 @@ import Link from "next/link";
 import { format } from "date-fns";
 import { ArrowRight, CalendarClock, Download, Printer, UserRoundPlus, Users } from "lucide-react";
 
+import { getAiFeatureState } from "@/lib/ai/capabilities";
 import type {
   AdminDashboardData,
   ClientDashboardData,
@@ -62,7 +63,15 @@ function MetricCard({
   value: number | string;
 }) {
   return (
-    <Link className="block rounded-2xl border border-stone-200 bg-[rgb(var(--brand-surface-rgb)/0.42)] p-4 transition-colors hover:bg-[rgb(var(--brand-surface-rgb)/0.62)]" href={href}>
+    <Link
+      className="block rounded-2xl border p-4 shadow-sm transition-colors"
+      href={href}
+      style={{
+        backgroundColor: "var(--brand-card)",
+        borderColor: "rgb(var(--brand-border-rgb) / 0.82)",
+        boxShadow: "0 8px 18px rgb(var(--brand-primary-rgb) / 0.05)",
+      }}
+    >
       <div className="text-sm font-medium text-stone-600">{label}</div>
       <div className="mt-3 text-3xl font-semibold tracking-tight text-stone-950">{value}</div>
       <p className="mt-2 text-sm text-stone-600">{helper}</p>
@@ -75,6 +84,7 @@ function renderStockWidget(
   props: DashboardWidgetGridProps,
 ) {
   const { adminData, clientData, clientRecord, customCharts = {}, organizationSettings, role, staffData } = props;
+  const semanticSearch = getAiFeatureState("semantic_search");
 
   switch (widget.key) {
     case "metric_active_clients":
@@ -132,11 +142,22 @@ function renderStockWidget(
           <CardHeader>
             <CardTitle>Semantic note search</CardTitle>
             <CardDescription>
-              Search internal service notes with natural language.
+              {semanticSearch.enabled
+                ? "Search internal service notes with natural language."
+                : "Available as a premium search add-on for internal admin and staff teams."}
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <SemanticSearch description={role === "admin" ? "Search is limited to internal admin and staff users." : "Search is available to staff and admins only."} />
+            <SemanticSearch
+              description={
+                role === "admin"
+                  ? "Search is limited to internal admin and staff users."
+                  : "Search is available to staff and admins only."
+              }
+              enabled={semanticSearch.enabled}
+              planLabel={semanticSearch.planLabel}
+              unavailableMessage={semanticSearch.unavailableMessage}
+            />
           </CardContent>
         </Card>
       );
@@ -173,7 +194,7 @@ function renderStockWidget(
               emptyMessage="No trend data yet."
               points={
                 adminData?.report.visitTrend.map((item) => ({
-                  href: `/dashboard/explore?source=service_entries&dimension=week&value=${encodeURIComponent(item.label)}&metric=count&timeframe=last_8_weeks`,
+                  href: `/dashboard/explore?source=service_entries&dimension=week&value=${encodeURIComponent(item.key)}&metric=count&timeframe=last_8_weeks`,
                   label: item.label,
                   value: item.count,
                 })) ?? []

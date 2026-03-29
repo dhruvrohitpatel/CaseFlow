@@ -4,9 +4,11 @@ import {
   analyzeImportAssistantAction,
   confirmImportAssistantAction,
 } from "@/app/actions/import-assistant";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { getAiFeatureState } from "@/lib/ai/capabilities";
 import { requireRole } from "@/lib/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
@@ -14,12 +16,21 @@ type ImportAssistantPageProps = {
   searchParams: Promise<{
     error?: string;
     imported?: string;
+    message?: string;
     session?: string;
   }>;
 };
 
-function resolveError(error?: string) {
+function resolveError(error?: string, message?: string) {
+  if (message?.trim()) {
+    return message;
+  }
+
   switch (error) {
+    case "admin-ai-disabled":
+      return "Premium admin AI is not enabled for this workspace.";
+    case "assistant-unavailable":
+      return "Premium admin AI is unavailable right now. Use the included templates and manual import workflow.";
     case "missing-file":
       return "Choose a CSV file before starting the import assistant.";
     case "save-failed":
@@ -37,6 +48,7 @@ export default async function ImportAssistantPage({
   searchParams,
 }: ImportAssistantPageProps) {
   await requireRole(["admin"]);
+  const adminAi = getAiFeatureState("admin_ai");
   const params = await searchParams;
   const supabase = createSupabaseAdminClient();
   const sessionId = params.session?.trim() || null;
@@ -60,7 +72,7 @@ export default async function ImportAssistantPage({
     throw new Error(recentError.message);
   }
 
-  const errorMessage = resolveError(params.error);
+  const errorMessage = resolveError(params.error, params.message);
   const previewRows = Array.isArray(currentSession?.preview_rows)
     ? (currentSession.preview_rows as Array<Record<string, string | null>>).slice(0, 10)
     : [];
@@ -88,7 +100,7 @@ export default async function ImportAssistantPage({
         <div>
           <h1 className="text-3xl font-semibold tracking-tight text-stone-950">Import assistant</h1>
           <p className="mt-2 text-sm text-stone-600">
-            Upload a CSV, let Gemini map it into CaseFlow core entities, review the normalized rows, then confirm the import.
+            Download the standard templates, then use premium admin AI for mapping suggestions only when this workspace enables it.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -107,22 +119,35 @@ export default async function ImportAssistantPage({
         </div>
       </div>
 
+      <div className="flex flex-wrap gap-2">
+        <Badge variant="outline">Included in base</Badge>
+        <Badge variant="outline">{adminAi.planLabel}</Badge>
+      </div>
+
       <section className="grid gap-6 xl:grid-cols-[0.85fr_1.15fr]">
         <Card className="brand-card border shadow-sm">
           <CardHeader>
             <CardTitle>Analyze CSV</CardTitle>
             <CardDescription>
-              The model chooses the target entity and field mapping. The app validates and previews the rows before import.
+              {adminAi.enabled
+                ? "The model suggests the target entity and field mapping. The app validates and previews the rows before import."
+                : "Base plan guidance includes templates and manual preparation. AI-assisted mapping is optional premium admin AI."}
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form action={analyzeImportAssistantAction} className="space-y-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-stone-950" htmlFor="csvFile">CSV file</label>
-                <input accept=".csv,text/csv" className="block w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm text-stone-950" id="csvFile" name="csvFile" type="file" />
+            {adminAi.enabled ? (
+              <form action={analyzeImportAssistantAction} className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-stone-950" htmlFor="csvFile">CSV file</label>
+                  <input accept=".csv,text/csv" className="block w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm text-stone-950" id="csvFile" name="csvFile" type="file" />
+                </div>
+                <Button type="submit">Analyze file</Button>
+              </form>
+            ) : (
+              <div className="rounded-2xl border border-dashed border-stone-300 bg-[rgb(var(--brand-surface-rgb)/0.42)] px-5 py-6 text-sm text-stone-600">
+                AI-assisted CSV mapping is optional. Use the sample files on this page as the standard format for manual preparation, then return when premium admin AI is enabled.
               </div>
-              <Button type="submit">Analyze file</Button>
-            </form>
+            )}
           </CardContent>
         </Card>
 
@@ -194,10 +219,10 @@ export default async function ImportAssistantPage({
 
           <div className="space-y-6">
             <Card className="brand-card border shadow-sm">
-              <CardHeader>
-                <CardTitle>Header mapping</CardTitle>
-                <CardDescription>Gemini suggested this mapping. The app applies it deterministically.</CardDescription>
-              </CardHeader>
+            <CardHeader>
+              <CardTitle>Header mapping</CardTitle>
+              <CardDescription>AI suggested this mapping. The app applies it deterministically after review.</CardDescription>
+            </CardHeader>
               <CardContent>
                 <Table>
                   <TableHeader>

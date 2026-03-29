@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
 import { type ActionState } from "@/lib/actions/form-state";
+import { isSemanticSearchEnabled } from "@/lib/ai/capabilities";
 import { generateEmbedding, serializeVector } from "@/lib/ai/embeddings";
 import { getStaffDisplayName, requireRole } from "@/lib/auth";
 import {
@@ -43,10 +44,12 @@ export async function createServiceEntryAction(
   const customFields = parseCustomFieldFormValues(definitions, formData);
   let embedding: string | null = null;
 
-  try {
-    embedding = serializeVector(await generateEmbedding(parsed.data.notes));
-  } catch (error) {
-    console.error("Service-entry embedding generation failed:", error);
+  if (isSemanticSearchEnabled()) {
+    try {
+      embedding = serializeVector(await generateEmbedding(parsed.data.notes));
+    } catch (error) {
+      console.error("Service-entry embedding generation failed:", error);
+    }
   }
 
   if (!customFields.success) {

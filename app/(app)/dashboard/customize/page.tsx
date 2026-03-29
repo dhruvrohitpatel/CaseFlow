@@ -12,6 +12,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { getAiFeatureState } from "@/lib/ai/capabilities";
 import { getDashboardPathForRole, requireAppSession } from "@/lib/auth";
 import {
   dashboardCatalog,
@@ -29,6 +30,7 @@ type CustomizePageProps = {
   searchParams: Promise<{
     applied?: string;
     error?: string;
+    message?: string;
     recommended?: string;
     reset?: string;
     saved?: string;
@@ -36,6 +38,23 @@ type CustomizePageProps = {
     targetRole?: string;
   }>;
 };
+
+function resolveCustomizeError(error?: string, message?: string) {
+  if (message?.trim()) {
+    return message;
+  }
+
+  switch (error) {
+    case "admin-ai-disabled":
+      return "Premium admin AI is not enabled for this workspace.";
+    case "recommendation-fields":
+      return "Complete every workflow field before requesting a recommendation.";
+    case "recommendation-unavailable":
+      return "Premium admin AI is unavailable right now. Use the manual workflow for now.";
+    default:
+      return error ? "Dashboard action failed. Review the inputs and try again." : null;
+  }
+}
 
 function parseRole(value: string | undefined, fallback: DashboardRole): DashboardRole {
   if (value === "admin" || value === "staff" || value === "client") {
@@ -49,6 +68,7 @@ export default async function CustomizeDashboardPage({
   searchParams,
 }: CustomizePageProps) {
   const [{ profile }, params] = await Promise.all([requireAppSession(), searchParams]);
+  const adminAi = getAiFeatureState("admin_ai");
   const scope = params.scope === "role" && profile.role === "admin" ? "role" : "personal";
   const targetRole = parseRole(params.targetRole, profile.role);
   const [effectiveLayout, roleLayout, recommendationsResult] = await Promise.all([
@@ -73,6 +93,7 @@ export default async function CustomizeDashboardPage({
   }
 
   const catalog = getCatalogForRole(targetRole);
+  const errorMessage = resolveCustomizeError(params.error, params.message);
 
   return (
     <div className="space-y-6">
@@ -96,9 +117,9 @@ export default async function CustomizeDashboardPage({
           Recommended widget bundle applied.
         </div>
       ) : null}
-      {params.error ? (
+      {errorMessage ? (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          Dashboard action failed. Review the inputs and try again.
+          {errorMessage}
         </div>
       ) : null}
 
@@ -108,7 +129,7 @@ export default async function CustomizeDashboardPage({
             Customize dashboard
           </h1>
           <p className="mt-2 text-sm text-stone-600">
-            Build a governed layout with configurable widgets, drill-through charts, and AI suggestions.
+            Build a governed layout with configurable widgets, drill-through charts, and optional AI add-ons.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -119,6 +140,11 @@ export default async function CustomizeDashboardPage({
             Import assistant
           </Link>
         </div>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <Badge variant="outline">Included in base</Badge>
+        <Badge variant="outline">{adminAi.planLabel}</Badge>
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -328,36 +354,46 @@ export default async function CustomizeDashboardPage({
           <Card className="brand-card border shadow-sm">
             <CardHeader>
               <CardTitle>AI suggestions</CardTitle>
-              <CardDescription>Describe the role and daily work. CaseFlow will recommend widgets and explain why they matter.</CardDescription>
+              <CardDescription>
+                {adminAi.enabled
+                  ? "Describe the role and daily work. CaseFlow will recommend widgets and explain why they matter."
+                  : "Manual widget selection is included in base. AI suggestions are optional and available as premium admin AI."}
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <form action={generateDashboardRecommendationAction} className="space-y-4">
-                <input name="scope" type="hidden" value={scope} />
-                <input name="targetRole" type="hidden" value={targetRole} />
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-stone-950" htmlFor="jobTitle">Job role</label>
-                  <input className="h-10 w-full rounded-lg border border-stone-200 bg-white px-3 text-sm text-stone-950" id="jobTitle" name="jobTitle" placeholder="Program director" />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-stone-950" htmlFor="dayToDay">Day-to-day work</label>
-                  <textarea className="min-h-24 w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm text-stone-950" id="dayToDay" name="dayToDay" placeholder="Review caseload, manage staff workload, track open referrals..." />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-stone-950" htmlFor="decisions">Most frequent decisions</label>
-                  <textarea className="min-h-20 w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm text-stone-950" id="decisions" name="decisions" placeholder="Where to allocate staff, which clients need follow-up, which program is over capacity..." />
-                </div>
-                <div className="grid gap-4 md:grid-cols-2">
+              {adminAi.enabled ? (
+                <form action={generateDashboardRecommendationAction} className="space-y-4">
+                  <input name="scope" type="hidden" value={scope} />
+                  <input name="targetRole" type="hidden" value={targetRole} />
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-stone-950" htmlFor="reportingCadence">Reporting cadence</label>
-                    <input className="h-10 w-full rounded-lg border border-stone-200 bg-white px-3 text-sm text-stone-950" id="reportingCadence" name="reportingCadence" placeholder="Daily + weekly" />
+                    <label className="text-sm font-medium text-stone-950" htmlFor="jobTitle">Job role</label>
+                    <input className="h-10 w-full rounded-lg border border-stone-200 bg-white px-3 text-sm text-stone-950" id="jobTitle" name="jobTitle" placeholder="Program director" />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-stone-950" htmlFor="painPoints">Pain points</label>
-                    <input className="h-10 w-full rounded-lg border border-stone-200 bg-white px-3 text-sm text-stone-950" id="painPoints" name="painPoints" placeholder="Too many tabs, slow follow-up visibility" />
+                    <label className="text-sm font-medium text-stone-950" htmlFor="dayToDay">Day-to-day work</label>
+                    <textarea className="min-h-24 w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm text-stone-950" id="dayToDay" name="dayToDay" placeholder="Review caseload, manage staff workload, track open referrals..." />
                   </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-stone-950" htmlFor="decisions">Most frequent decisions</label>
+                    <textarea className="min-h-20 w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm text-stone-950" id="decisions" name="decisions" placeholder="Where to allocate staff, which clients need follow-up, which program is over capacity..." />
+                  </div>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-stone-950" htmlFor="reportingCadence">Reporting cadence</label>
+                      <input className="h-10 w-full rounded-lg border border-stone-200 bg-white px-3 text-sm text-stone-950" id="reportingCadence" name="reportingCadence" placeholder="Daily + weekly" />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-stone-950" htmlFor="painPoints">Pain points</label>
+                      <input className="h-10 w-full rounded-lg border border-stone-200 bg-white px-3 text-sm text-stone-950" id="painPoints" name="painPoints" placeholder="Too many tabs, slow follow-up visibility" />
+                    </div>
+                  </div>
+                  <Button type="submit">Generate widget suggestions</Button>
+                </form>
+              ) : (
+                <div className="rounded-2xl border border-dashed border-stone-300 bg-[rgb(var(--brand-surface-rgb)/0.42)] px-5 py-6 text-sm text-stone-600">
+                  Premium admin AI can suggest widget bundles from the approved catalog. The base plan still includes role defaults, personal overrides, and manual widget editing.
                 </div>
-                <Button type="submit">Generate widget suggestions</Button>
-              </form>
+              )}
 
               {recommendationsResult.data?.map((recommendation) => (
                 <div key={recommendation.id} className="rounded-2xl border border-stone-200 bg-white p-4">

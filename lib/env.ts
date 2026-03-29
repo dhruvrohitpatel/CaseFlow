@@ -27,8 +27,24 @@ export function getServerEnv() {
   });
 }
 
+export function getOptionalGeminiApiKey() {
+  const rawValue = process.env.GEMINI_API_KEY?.trim();
+
+  if (!rawValue) {
+    return null;
+  }
+
+  return geminiApiKeySchema.parse(rawValue);
+}
+
 export function getGeminiApiKey() {
-  return geminiApiKeySchema.parse(process.env.GEMINI_API_KEY);
+  const value = getOptionalGeminiApiKey();
+
+  if (!value) {
+    throw new Error("GEMINI_API_KEY is not configured.");
+  }
+
+  return value;
 }
 
 export function getGeminiTextModel() {

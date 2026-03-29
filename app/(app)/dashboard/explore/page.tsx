@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { endOfMonth, endOfQuarter, endOfWeek, format, startOfMonth, startOfQuarter, startOfToday, startOfWeek } from "date-fns";
 
 import { getPortalClientForCurrentUser, requireAppSession } from "@/lib/auth";
 
@@ -12,6 +13,76 @@ type ExplorePageProps = {
   }>;
 };
 
+function getDateRangeForTimeframe(timeframe?: string) {
+  const today = startOfToday();
+
+  switch (timeframe) {
+    case "today":
+      return {
+        end: format(today, "yyyy-MM-dd"),
+        start: format(today, "yyyy-MM-dd"),
+      };
+    case "this_week":
+      return {
+        end: format(endOfWeek(today, { weekStartsOn: 1 }), "yyyy-MM-dd"),
+        start: format(startOfWeek(today, { weekStartsOn: 1 }), "yyyy-MM-dd"),
+      };
+    case "this_month":
+      return {
+        end: format(endOfMonth(today), "yyyy-MM-dd"),
+        start: format(startOfMonth(today), "yyyy-MM-dd"),
+      };
+    case "this_quarter":
+      return {
+        end: format(endOfQuarter(today), "yyyy-MM-dd"),
+        start: format(startOfQuarter(today), "yyyy-MM-dd"),
+      };
+    default:
+      return null;
+  }
+}
+
+function getDateRangeForBucket(dimension?: string, value?: string) {
+  if (!dimension || !value) {
+    return null;
+  }
+
+  if (dimension === "day" || dimension === "week") {
+    const baseDate = new Date(`${value}T00:00:00`);
+
+    if (Number.isNaN(baseDate.getTime())) {
+      return null;
+    }
+
+    if (dimension === "day") {
+      return {
+        end: format(baseDate, "yyyy-MM-dd"),
+        start: format(baseDate, "yyyy-MM-dd"),
+      };
+    }
+
+    return {
+      end: format(endOfWeek(baseDate, { weekStartsOn: 1 }), "yyyy-MM-dd"),
+      start: format(startOfWeek(baseDate, { weekStartsOn: 1 }), "yyyy-MM-dd"),
+    };
+  }
+
+  if (dimension === "month") {
+    const baseDate = new Date(`${value}-01T00:00:00`);
+
+    if (Number.isNaN(baseDate.getTime())) {
+      return null;
+    }
+
+    return {
+      end: format(endOfMonth(baseDate), "yyyy-MM-dd"),
+      start: format(startOfMonth(baseDate), "yyyy-MM-dd"),
+    };
+  }
+
+  return null;
+}
+
 export default async function DashboardExplorePage({
   searchParams,
 }: ExplorePageProps) {
@@ -20,6 +91,8 @@ export default async function DashboardExplorePage({
   const source = params.source?.trim() ?? "clients";
   const value = params.value?.trim();
   const dimension = params.dimension?.trim();
+  const timeframe = params.timeframe?.trim();
+  const dateRange = getDateRangeForBucket(dimension, value) ?? getDateRangeForTimeframe(timeframe);
 
   if (profile.role === "client" && source === "clients") {
     return (
@@ -58,6 +131,12 @@ export default async function DashboardExplorePage({
 
     if (dimension === "preferred_language" && value) {
       query = query.eq("preferred_language", value);
+    }
+
+    if (dateRange) {
+      query = query
+        .gte("created_at", `${dateRange.start}T00:00:00.000Z`)
+        .lte("created_at", `${dateRange.end}T23:59:59.999Z`);
     }
 
     const { data, error } = await query;
@@ -110,6 +189,12 @@ export default async function DashboardExplorePage({
       query = query.eq("reminder_status", value as "not_needed" | "pending" | "sent");
     }
 
+    if (dateRange) {
+      query = query
+        .gte("scheduled_for", `${dateRange.start}T00:00:00.000Z`)
+        .lte("scheduled_for", `${dateRange.end}T23:59:59.999Z`);
+    }
+
     const { data, error } = await query;
 
     if (error) {
@@ -149,11 +234,27 @@ export default async function DashboardExplorePage({
   }
 
   if (source === "access_allowlist") {
-    const { data, error } = await supabase
+    let query = supabase
       .from("access_allowlist")
       .select("email, role, is_active, created_at")
       .order("created_at", { ascending: false })
       .limit(100);
+
+    if (dimension === "status" && value) {
+      query = query.eq("is_active", value === "active");
+    }
+
+    if (value && dimension && dimension !== "status" && dimension !== "day" && dimension !== "week" && dimension !== "month") {
+      query = query.eq("role", value as "admin" | "staff" | "client");
+    }
+
+    if (dateRange) {
+      query = query
+        .gte("created_at", `${dateRange.start}T00:00:00.000Z`)
+        .lte("created_at", `${dateRange.end}T23:59:59.999Z`);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       throw new Error(error.message);
@@ -194,6 +295,18 @@ export default async function DashboardExplorePage({
 
   if (clientScopedId) {
     serviceQuery = serviceQuery.eq("client_id", clientScopedId);
+  }
+
+  if (dimension === "service_type" && value) {
+    serviceQuery = serviceQuery.eq("service_types.name", value);
+  }
+
+  if (dimension === "staff_member_name" && value) {
+    serviceQuery = serviceQuery.eq("staff_member_name", value);
+  }
+
+  if (dateRange) {
+    serviceQuery = serviceQuery.gte("service_date", dateRange.start).lte("service_date", dateRange.end);
   }
 
   const { data, error } = await serviceQuery;

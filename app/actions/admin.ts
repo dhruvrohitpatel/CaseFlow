@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { randomUUID } from "node:crypto";
 
 import type { ActionState } from "@/lib/actions/form-state";
+import { formatAiFeatureError, getAiFeatureState } from "@/lib/ai/capabilities";
 import { generateThemeDraft } from "@/lib/ai/gemini-workflows";
 import { normalizeEmail } from "@/lib/access-allowlist";
 import { requireRole } from "@/lib/auth";
@@ -656,7 +657,15 @@ export async function generateThemeDraftAction(
   _previousState: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
+  const adminAi = getAiFeatureState("admin_ai");
   const prompt = String(formData.get("themePrompt") ?? "").trim();
+
+  if (!adminAi.enabled) {
+    return {
+      message: adminAi.unavailableMessage,
+      status: "error",
+    };
+  }
 
   if (prompt.length < 16) {
     return {
@@ -700,11 +709,9 @@ export async function generateThemeDraftAction(
       };
     }
   } catch (error) {
+    console.error("Theme draft generation failed:", error);
     return {
-      message:
-        error instanceof Error
-          ? error.message
-          : "Theme draft generation failed.",
+      message: formatAiFeatureError("admin_ai", error),
       status: "error",
     };
   }

@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { OrganizationSetupForms } from "@/components/forms/organization-setup-forms";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { getAiFeatureState } from "@/lib/ai/capabilities";
 import { getDashboardPathForRole, requireRole } from "@/lib/auth";
 import {
   getOrganizationSettings,
@@ -22,6 +23,7 @@ export default async function SetupPage({ searchParams }: SetupPageProps) {
     getOrganizationSettings(),
     searchParams,
   ]);
+  const adminAi = getAiFeatureState("admin_ai");
   const [{ count: accessCount, error: accessError }, { data: themeDrafts, error: themeDraftError }] =
     await Promise.all([
       supabase.from("access_allowlist").select("*", { count: "exact", head: true }),
@@ -77,6 +79,9 @@ export default async function SetupPage({ searchParams }: SetupPageProps) {
 
       <OrganizationSetupForms
         accessCount={accessCount ?? 0}
+        adminAiEnabled={adminAi.enabled}
+        adminAiPlanLabel={adminAi.planLabel}
+        adminAiUnavailableMessage={adminAi.unavailableMessage}
         organizationSettings={settings}
         steps={steps}
         themeDrafts={(themeDrafts ?? []) as Array<{

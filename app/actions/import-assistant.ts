@@ -4,6 +4,11 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import type { Database } from "@/lib/database.types";
+import {
+  formatAiFeatureError,
+  getAiFeatureState,
+  isSemanticSearchEnabled,
+} from "@/lib/ai/capabilities";
 import { generateEmbedding, serializeVector } from "@/lib/ai/embeddings";
 import { inferImportPlan } from "@/lib/ai/gemini-workflows";
 import { requireRole } from "@/lib/auth";
@@ -20,7 +25,12 @@ function redirectWithError(error: string): never {
 
 export async function analyzeImportAssistantAction(formData: FormData) {
   const { profile } = await requireRole(["admin"]);
+  const adminAi = getAiFeatureState("admin_ai");
   const uploadedValue = formData.get("csvFile");
+
+  if (!adminAi.enabled) {
+    redirectWithError("admin-ai-disabled");
+  }
 
   if (!(uploadedValue instanceof File) || uploadedValue.size === 0) {
     redirectWithError("missing-file");
@@ -34,7 +44,15 @@ export async function analyzeImportAssistantAction(formData: FormData) {
     redirectWithError("empty-file");
   }
 
-  const plan = await inferImportPlan(payload);
+  let plan: Awaited<ReturnType<typeof inferImportPlan>>;
+
+  try {
+    plan = await inferImportPlan(payload);
+  } catch (error) {
+    console.error("Import assistant analysis failed:", error);
+    redirect(`/admin/import-assistant?error=assistant-unavailable&message=${encodeURIComponent(formatAiFeatureError("admin_ai", error))}`);
+  }
+
   const preview = buildImportPreview(text, plan);
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
@@ -112,6 +130,7 @@ export async function confirmImportAssistantAction(formData: FormData) {
   }
 
   if (targetEntity === "service_entries") {
+    const semanticSearchEnabled = isSemanticSearchEnabled();
     const uniqueServiceTypes = Array.from(
       new Set(normalizedRows.map((row) => row.service_type_name).filter(Boolean)),
     );
@@ -179,10 +198,12 @@ export async function confirmImportAssistantAction(formData: FormData) {
 
       let embedding: string | null = null;
 
-      try {
-        embedding = serializeVector(await generateEmbedding(row.notes));
-      } catch {
-        embedding = null;
+      if (semanticSearchEnabled) {
+        try {
+          embedding = serializeVector(await generateEmbedding(row.notes));
+        } catch {
+          embedding = null;
+        }
       }
 
       rowsToInsert.push({

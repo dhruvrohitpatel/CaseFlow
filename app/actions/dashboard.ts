@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { formatAiFeatureError, getAiFeatureState } from "@/lib/ai/capabilities";
 import { generateWidgetRecommendations } from "@/lib/ai/gemini-workflows";
 import {
   chartTypeSchema,
@@ -198,9 +199,14 @@ export async function generateDashboardRecommendationAction(formData: FormData) 
   const { profile } = await requireAppSession();
   const scope = getScope(formData);
   const targetRole = getTargetRole(formData, profile.role);
+  const adminAi = getAiFeatureState("admin_ai");
 
   if (scope === "role" && profile.role !== "admin") {
     redirect(getCustomizeRedirect("personal", profile.role, { error: "role-scope" }));
+  }
+
+  if (!adminAi.enabled) {
+    redirect(getCustomizeRedirect(scope, targetRole, { error: "admin-ai-disabled" }));
   }
 
   const title = String(formData.get("jobTitle") ?? "").trim();
@@ -213,15 +219,27 @@ export async function generateDashboardRecommendationAction(formData: FormData) 
     redirect(getCustomizeRedirect(scope, targetRole, { error: "recommendation-fields" }));
   }
 
-  const recommendations = await generateWidgetRecommendations({
-    catalog: getCatalogForRole(targetRole),
-    dayToDay,
-    decisions,
-    painPoints,
-    reportingCadence,
-    role: targetRole,
-    title,
-  });
+  let recommendations;
+
+  try {
+    recommendations = await generateWidgetRecommendations({
+      catalog: getCatalogForRole(targetRole),
+      dayToDay,
+      decisions,
+      painPoints,
+      reportingCadence,
+      role: targetRole,
+      title,
+    });
+  } catch (error) {
+    console.error("Dashboard recommendation generation failed:", error);
+    redirect(
+      getCustomizeRedirect(scope, targetRole, {
+        error: "recommendation-unavailable",
+        message: formatAiFeatureError("admin_ai", error),
+      }),
+    );
+  }
 
   const supabase = createSupabaseAdminClient();
   const { error } = await supabase.from("dashboard_ai_recommendations").insert({

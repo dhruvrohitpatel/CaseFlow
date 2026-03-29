@@ -14,7 +14,7 @@ export type DashboardMetric = {
 export type DashboardReport = {
   metrics: DashboardMetric[];
   serviceTypeBreakdown: Array<{ name: string; count: number }>;
-  visitTrend: Array<{ label: string; count: number }>;
+  visitTrend: Array<{ key: string; label: string; count: number }>;
   generatedAt: string;
 };
 
@@ -150,8 +150,9 @@ function buildVisitTrend(entries: Array<{ service_date: string }>) {
     }
   }
 
-  return weeks.map(({ count, label }) => ({
+  return weeks.map(({ count, key, label }) => ({
     count,
+    key,
     label,
   }));
 }

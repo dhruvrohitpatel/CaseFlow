@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
+import { formatAiFeatureError, getAiFeatureState } from "@/lib/ai/capabilities";
 import { generateEmbedding, serializeVector } from "@/lib/ai/embeddings";
 import { getCurrentSession } from "@/lib/auth";
 
@@ -9,6 +10,7 @@ const searchQuerySchema = z.object({
 });
 
 export async function GET(request: NextRequest) {
+  const semanticSearch = getAiFeatureState("semantic_search");
   const session = await getCurrentSession();
 
   if (!session) {
@@ -17,6 +19,10 @@ export async function GET(request: NextRequest) {
 
   if (session.profile.role === "client") {
     return NextResponse.json({ error: "You do not have access to semantic search." }, { status: 403 });
+  }
+
+  if (!semanticSearch.enabled) {
+    return NextResponse.json({ error: semanticSearch.unavailableMessage }, { status: 403 });
   }
 
   const parsed = searchQuerySchema.safeParse({
@@ -45,6 +51,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ results: data ?? [] });
   } catch (error) {
     console.error("Semantic search failed:", error);
-    return NextResponse.json({ error: "Semantic search failed." }, { status: 500 });
+    return NextResponse.json(
+      { error: formatAiFeatureError("semantic_search", error) },
+      { status: 503 },
+    );
   }
 }
