@@ -4,6 +4,7 @@ import { ArrowRight, CalendarClock, Download, Printer } from "lucide-react";
 import { ServiceTypeBarChart } from "@/components/dashboard/service-type-bar-chart";
 import { VisitTrendChart } from "@/components/dashboard/visit-trend-chart";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { SemanticSearch } from "@/components/search/semantic-search";
 import { requireCurrentSession } from "@/lib/auth";
 import { getDashboardReport } from "@/lib/reporting";
 
@@ -108,6 +109,20 @@ export default async function DashboardPage({
           </CardHeader>
           <CardContent>
             <VisitTrendChart points={report.visitTrend} />
+          </CardContent>
+        </Card>
+      </section>
+
+      <section>
+        <Card className="border-stone-200 shadow-sm">
+          <CardHeader>
+            <CardTitle>Search case notes</CardTitle>
+            <CardDescription>
+              Ask in plain language — find clients by what was done, not just by name.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <SemanticSearch />
           </CardContent>
         </Card>
       </section>

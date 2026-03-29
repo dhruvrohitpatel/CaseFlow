@@ -10,6 +10,7 @@ import {
   parseCustomFieldFormValues,
   replaceServiceEntryCustomFieldValues,
 } from "@/lib/custom-fields";
+import { generateEmbedding } from "@/lib/ai/embeddings";
 import { createServiceEntrySchema } from "@/lib/validators/service-entry";
 
 function getFieldErrors(error: {
@@ -77,12 +78,22 @@ export async function createServiceEntryAction(
 
   if (error || !entry) {
     return {
-      message: error?.message ?? "Could not save the service entry.",
+      message: error?.message ?? "Failed to save service entry.",
       status: "error",
     };
   }
 
   await replaceServiceEntryCustomFieldValues(supabase, entry.id, customFields.values);
+
+  // Generate and store embedding in the background — don't block the redirect
+  generateEmbedding(parsed.data.notes)
+    .then((embedding) =>
+      supabase
+        .from("service_entries")
+        .update({ embedding: JSON.stringify(embedding) })
+        .eq("id", entry.id)
+    )
+    .catch((err) => console.error("Embedding failed for entry", entry.id, err));
 
   revalidatePath("/dashboard");
   redirect(`/clients/${client.client_id}?logged=1`);
