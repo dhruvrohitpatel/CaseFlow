@@ -348,6 +348,11 @@ export async function getStoredRoleLayout(role: DashboardRole) {
     throw new Error(error.message);
   }
 
+  if (!data) {
+    await saveRoleLayout(role, defaultRoleLayouts[role], null);
+    return defaultRoleLayouts[role];
+  }
+
   return parseLayout(data?.layout, defaultRoleLayouts[role]);
 }
 
@@ -389,14 +394,19 @@ export async function getEffectiveDashboardLayout(role: DashboardRole, profileId
 export async function saveRoleLayout(
   role: DashboardRole,
   layout: DashboardWidget[],
-  updatedBy: string,
+  updatedBy: string | null,
 ) {
   const supabase = createSupabaseAdminClient();
-  const { error } = await supabase.from("dashboard_role_layouts").upsert({
-    layout,
-    role,
-    updated_by: updatedBy,
-  });
+  const { error } = await supabase.from("dashboard_role_layouts").upsert(
+    {
+      layout,
+      role,
+      updated_by: updatedBy,
+    },
+    {
+      onConflict: "role",
+    },
+  );
 
   if (error) {
     throw new Error(error.message);
@@ -409,11 +419,16 @@ export async function saveUserLayout(
   layout: DashboardWidget[],
 ) {
   const supabase = createSupabaseAdminClient();
-  const { error } = await supabase.from("dashboard_user_layout_overrides").upsert({
-    layout,
-    profile_id: profileId,
-    role,
-  });
+  const { error } = await supabase.from("dashboard_user_layout_overrides").upsert(
+    {
+      layout,
+      profile_id: profileId,
+      role,
+    },
+    {
+      onConflict: "profile_id",
+    },
+  );
 
   if (error) {
     throw new Error(error.message);

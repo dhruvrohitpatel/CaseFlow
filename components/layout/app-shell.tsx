@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Headset, LayoutTemplate } from "lucide-react";
+import { Headset } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import type { Database } from "@/lib/database.types";
@@ -62,6 +62,7 @@ export function AppShell({
           { href: "/dashboard", label: "Dashboard" },
           { href: "/clients", label: "Clients" },
           { href: "/clients/new", label: "New client" },
+          { href: "/services", label: "Voice notes" },
           { href: "/schedule", label: "Schedule" },
           ...(profile.role === "admin"
             ? [
@@ -123,17 +124,32 @@ export function AppShell({
                 const isActive =
                   pathname === item.href ||
                   (item.href !== "/dashboard" && pathname.startsWith(`${item.href}/`));
+                const isSetupItem = item.href === "/setup";
+                const navClassName = cn(
+                  "rounded-full px-3.5 py-2 text-sm font-medium transition-colors",
+                  isActive
+                    ? "text-[color:var(--brand-primary-foreground)] shadow-sm"
+                    : "bg-stone-100 text-stone-700 hover:bg-stone-200",
+                );
+
+                if (isSetupItem && isActive) {
+                  return (
+                    <span
+                      key={item.href}
+                      className={navClassName}
+                      style={{ backgroundColor: "var(--brand-primary)" }}
+                    >
+                      {item.label}
+                    </span>
+                  );
+                }
 
                 return (
                   <Link
                     key={item.href}
-                    className={cn(
-                      "rounded-full px-3.5 py-2 text-sm font-medium transition-colors",
-                      isActive
-                        ? "text-[color:var(--brand-primary-foreground)] shadow-sm"
-                        : "bg-stone-100 text-stone-700 hover:bg-stone-200",
-                    )}
+                    className={navClassName}
                     href={item.href}
+                    prefetch={isSetupItem ? false : undefined}
                     style={isActive ? { backgroundColor: "var(--brand-primary)" } : undefined}
                   >
                     {item.label}
@@ -151,19 +167,6 @@ export function AppShell({
                 >
                   <Headset className="size-4" />
                   {organizationSettings.support_cta_text}
-                </Link>
-              ) : null}
-              {profile.role === "admin" && !setupComplete ? (
-                <Link
-                  className="inline-flex h-7 items-center justify-center gap-1.5 rounded-full border px-2.5 text-xs font-medium text-stone-900 transition-colors hover:bg-white"
-                  href="/setup"
-                  style={{
-                    backgroundColor: "rgb(var(--brand-accent-rgb) / 0.22)",
-                    borderColor: "rgb(var(--brand-primary-rgb) / 0.12)",
-                  }}
-                >
-                  <LayoutTemplate className="size-4" />
-                  Finish setup
                 </Link>
               ) : null}
               <div className="min-w-0 text-right text-sm text-stone-600">

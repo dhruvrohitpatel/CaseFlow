@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useState } from "react";
+import { useActionState, useState, type ChangeEvent } from "react";
 import { CheckCircle2, Circle, ExternalLink, Sparkles, Upload } from "lucide-react";
 
 import {
@@ -22,6 +22,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { initialActionState } from "@/lib/actions/form-state";
 import type { OrganizationSettings } from "@/lib/organization-settings";
 import { fontPairTokens, themePresets } from "@/lib/theme-presets";
+import {
+  BRANDING_ASSET_UPLOAD_RULE,
+  formatUploadLimit,
+  validateUploadFile,
+} from "@/lib/uploads";
 
 type SetupStep = {
   description: string;
@@ -121,6 +126,10 @@ export function OrganizationSetupForms({
     generateThemeDraftAction,
     initialActionState,
   );
+  const [brandingFileErrors, setBrandingFileErrors] = useState<{
+    faviconFile?: string;
+    logoFile?: string;
+  }>({});
   const completedSteps = steps.filter((step) => step.done).length;
   const [brandingValues, setBrandingValues] = useState({
     accentColor: organizationSettings.accent_color,
@@ -163,6 +172,25 @@ export function OrganizationSetupForms({
       themePresetKey: preset.recipe.theme_preset_key,
     }));
   }
+
+  function handleBrandAssetSelection(
+    event: ChangeEvent<HTMLInputElement>,
+    fieldName: "faviconFile" | "logoFile",
+  ) {
+    const nextFile = event.target.files?.[0];
+    const nextError = nextFile
+      ? validateUploadFile(nextFile, BRANDING_ASSET_UPLOAD_RULE)
+      : undefined;
+
+    setBrandingFileErrors((current) => ({
+      ...current,
+      [fieldName]: nextError ?? undefined,
+    }));
+  }
+
+  const brandingSubmitDisabled = Boolean(
+    brandingFileErrors.logoFile || brandingFileErrors.faviconFile,
+  );
 
   return (
     <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
@@ -330,18 +358,36 @@ export function OrganizationSetupForms({
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="logoFile">Logo</Label>
-                  <Input accept="image/png,image/jpeg,image/webp,image/svg+xml" id="logoFile" name="logoFile" type="file" />
-                  <p className="text-xs text-stone-500">Used in the app header and login experience.</p>
+                  <Input
+                    accept="image/png,image/jpeg,image/webp,image/svg+xml,image/x-icon,image/vnd.microsoft.icon"
+                    id="logoFile"
+                    name="logoFile"
+                    onChange={(event) => handleBrandAssetSelection(event, "logoFile")}
+                    type="file"
+                  />
+                  <p className="text-xs text-stone-500">
+                    Used in the app header and login experience. Max {formatUploadLimit(BRANDING_ASSET_UPLOAD_RULE.maxBytes)}.
+                  </p>
+                  <FieldError message={brandingFileErrors.logoFile} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="faviconFile">Favicon</Label>
-                  <Input accept="image/png,image/x-icon,image/svg+xml" id="faviconFile" name="faviconFile" type="file" />
-                  <p className="text-xs text-stone-500">Shown in browser tabs and bookmarks.</p>
+                  <Input
+                    accept="image/png,image/x-icon,image/vnd.microsoft.icon,image/svg+xml"
+                    id="faviconFile"
+                    name="faviconFile"
+                    onChange={(event) => handleBrandAssetSelection(event, "faviconFile")}
+                    type="file"
+                  />
+                  <p className="text-xs text-stone-500">
+                    Shown in browser tabs and bookmarks. Max {formatUploadLimit(BRANDING_ASSET_UPLOAD_RULE.maxBytes)}.
+                  </p>
+                  <FieldError message={brandingFileErrors.faviconFile} />
                 </div>
               </div>
 
               <FormMessage message={brandingState.message} tone={brandingState.status === "success" ? "success" : "error"} />
-              <SubmitButton pendingLabel="Saving branding...">
+              <SubmitButton disabled={brandingSubmitDisabled} pendingLabel="Saving branding...">
                 <Upload className="size-4" />
                 Save branding
               </SubmitButton>

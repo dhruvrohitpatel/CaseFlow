@@ -15,6 +15,7 @@ import {
   replaceClientCustomFieldValues,
 } from "@/lib/custom-fields";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { INTAKE_PHOTO_UPLOAD_RULE, validateUploadFile } from "@/lib/uploads";
 import { createClientSchema } from "@/lib/validators/client";
 
 function getFieldErrors(error: {
@@ -24,15 +25,15 @@ function getFieldErrors(error: {
 }
 
 const INTAKE_SOURCE_BUCKET = "intake-source-images";
-const allowedIntakeImageTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 async function uploadIntakeImage(file: File) {
-  if (!allowedIntakeImageTypes.has(file.type)) {
-    throw new Error("Upload a JPG, PNG, or WEBP intake photo.");
-  }
+  const validationError = validateUploadFile(file, INTAKE_PHOTO_UPLOAD_RULE);
 
-  if (file.size > 6 * 1024 * 1024) {
-    throw new Error("Keep intake photos under 6 MB.");
+  if (validationError) {
+    return {
+      error: validationError,
+      path: null,
+    };
   }
 
   const extension = file.name.includes(".") ? file.name.split(".").pop()?.toLowerCase() : undefined;
@@ -48,10 +49,16 @@ async function uploadIntakeImage(file: File) {
     });
 
   if (error) {
-    throw new Error(error.message);
+    return {
+      error: "We could not upload that intake photo. Try again.",
+      path: null,
+    };
   }
 
-  return path;
+  return {
+    error: null,
+    path,
+  };
 }
 
 export async function processIntakePhotoAction(
@@ -76,15 +83,33 @@ export async function processIntakePhotoAction(
     };
   }
 
+  const uploadValidationError = validateUploadFile(uploaded, INTAKE_PHOTO_UPLOAD_RULE);
+
+  if (uploadValidationError) {
+    return {
+      message: uploadValidationError,
+      status: "error",
+    };
+  }
+
   const { profile, supabase } = await requireRole(["admin", "staff"]);
-  const customFieldDefinitions = await getActiveCustomFieldDefinitions(supabase, "client");
   const adminSupabase = createSupabaseAdminClient();
   const { aiProvider } = getAiCapabilities();
   const providerLabel = aiProvider === "openai" ? "openai" : "gemini";
   let sessionId: string | null = null;
 
   try {
-    const sourceImagePath = await uploadIntakeImage(uploaded);
+    const customFieldDefinitions = await getActiveCustomFieldDefinitions(supabase, "client");
+    const uploadResult = await uploadIntakeImage(uploaded);
+
+    if (uploadResult.error || !uploadResult.path) {
+      return {
+        message: uploadResult.error ?? "We could not upload that intake photo.",
+        status: "error",
+      };
+    }
+
+    const sourceImagePath = uploadResult.path;
     const { data: createdSession, error: createError } = await adminSupabase
       .from("intake_capture_sessions")
       .insert({
@@ -205,7 +230,20 @@ export async function createClientAction(
   }
 
   const { profile, supabase } = await requireRole(["admin", "staff"]);
-  const definitions = await getActiveCustomFieldDefinitions(supabase, "client");
+  let definitions: Awaited<ReturnType<typeof getActiveCustomFieldDefinitions>>;
+
+  try {
+    definitions = await getActiveCustomFieldDefinitions(supabase, "client");
+  } catch (error) {
+    return {
+      message:
+        error instanceof Error
+          ? error.message
+          : "Custom field definitions could not be loaded.",
+      status: "error",
+    };
+  }
+
   const customFields = parseCustomFieldFormValues(definitions, formData);
 
   if (!customFields.success) {
@@ -241,7 +279,17 @@ export async function createClientAction(
     };
   }
 
-  await replaceClientCustomFieldValues(supabase, data.id, customFields.values);
+  try {
+    await replaceClientCustomFieldValues(supabase, data.id, customFields.values);
+  } catch (error) {
+    return {
+      message:
+        error instanceof Error
+          ? error.message
+          : "Client fields could not be saved.",
+      status: "error",
+    };
+  }
   if (intakeSessionId) {
     const adminSupabase = createSupabaseAdminClient();
     await adminSupabase

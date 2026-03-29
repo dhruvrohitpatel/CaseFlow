@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState, type ChangeEvent } from "react";
 import { Camera, FileImage, Sparkles, TriangleAlert } from "lucide-react";
 
 import {
@@ -18,6 +18,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { initialActionState } from "@/lib/actions/form-state";
 import type { CustomFieldDefinition } from "@/lib/custom-fields";
+import {
+  formatUploadLimit,
+  INTAKE_PHOTO_UPLOAD_RULE,
+  validateUploadFile,
+} from "@/lib/uploads";
 
 const fieldErrorClassName = "text-sm text-red-700";
 const nativeSelectClassName =
@@ -51,7 +56,15 @@ export function CreateClientForm({
 }: CreateClientFormProps) {
   const [state, formAction] = useActionState(createClientAction, initialActionState);
   const [photoState, photoAction] = useActionState(processIntakePhotoAction, initialActionState);
+  const [intakePhotoError, setIntakePhotoError] = useState<string | null>(null);
   const intakeInitialValues = intakeSession?.coreValues ?? {};
+
+  function handleIntakePhotoSelection(event: ChangeEvent<HTMLInputElement>) {
+    const nextFile = event.target.files?.[0];
+    setIntakePhotoError(
+      nextFile ? validateUploadFile(nextFile, INTAKE_PHOTO_UPLOAD_RULE) : null,
+    );
+  }
 
   function renderConfidenceBadge(level?: string) {
     if (level === "low") {
@@ -116,8 +129,13 @@ export function CreateClientForm({
                       capture="environment"
                       id="intakePhoto"
                       name="intakePhoto"
+                      onChange={handleIntakePhotoSelection}
                       type="file"
                     />
+                    <p className="text-xs text-stone-500">
+                      Supported files: JPG, PNG, WEBP. Max {formatUploadLimit(INTAKE_PHOTO_UPLOAD_RULE.maxBytes)}.
+                    </p>
+                    {intakePhotoError ? <p className={fieldErrorClassName}>{intakePhotoError}</p> : null}
                   </div>
                 </div>
                 <FormMessage message={photoState.message} tone={photoState.status === "success" ? "success" : "error"} />
@@ -125,7 +143,7 @@ export function CreateClientForm({
                   <p className="text-sm text-stone-600">
                     Manual entry remains available below. AI only prepares a draft.
                   </p>
-                  <SubmitButton pendingLabel="Reading intake photo...">Process intake photo</SubmitButton>
+                  <SubmitButton disabled={Boolean(intakePhotoError)} pendingLabel="Reading intake photo...">Process intake photo</SubmitButton>
                 </div>
               </div>
               <div className="rounded-2xl border border-stone-200 bg-white p-4">

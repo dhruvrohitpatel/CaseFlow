@@ -1,12 +1,13 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState, type ChangeEvent } from "react";
 
 import { importClientsCsvAction, type CsvImportState } from "@/app/actions/admin";
 import { FormMessage } from "@/components/forms/form-message";
 import { SubmitButton } from "@/components/forms/submit-button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { CSV_UPLOAD_RULE, formatUploadLimit, validateUploadFile } from "@/lib/uploads";
 
 export function ClientCsvImportForm() {
   const initialCsvImportState: CsvImportState = {};
@@ -14,6 +15,12 @@ export function ClientCsvImportForm() {
     importClientsCsvAction,
     initialCsvImportState,
   );
+  const [fileError, setFileError] = useState<string | null>(null);
+
+  function handleFileSelection(event: ChangeEvent<HTMLInputElement>) {
+    const nextFile = event.target.files?.[0];
+    setFileError(nextFile ? validateUploadFile(nextFile, CSV_UPLOAD_RULE) : null);
+  }
 
   return (
     <Card className="border-stone-200 shadow-sm">
@@ -32,15 +39,20 @@ export function ClientCsvImportForm() {
               className="block w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm"
               id="csvFile"
               name="csvFile"
+              onChange={handleFileSelection}
               type="file"
             />
+            <p className="text-xs text-stone-500">
+              Upload a `.csv` file up to {formatUploadLimit(CSV_UPLOAD_RULE.maxBytes)}.
+            </p>
+            {fileError ? <p className="text-sm text-red-700">{fileError}</p> : null}
           </div>
           <FormMessage
             message={state.message}
             tone={state.status === "success" ? "success" : "error"}
           />
           <div className="flex justify-end">
-            <SubmitButton pendingLabel="Importing...">Import CSV</SubmitButton>
+            <SubmitButton disabled={Boolean(fileError)} pendingLabel="Importing...">Import CSV</SubmitButton>
           </div>
         </form>
         {typeof state.processed === "number" ? (

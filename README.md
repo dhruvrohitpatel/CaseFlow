@@ -81,10 +81,11 @@ cp .env.example .env.local
 Required values:
 
 ```bash
-NEXT_PUBLIC_APP_URL=http://localhost:3000
 NEXT_PUBLIC_SUPABASE_URL=...
 NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 SUPABASE_SERVICE_ROLE_KEY=...
+ENABLE_SPEED_INSIGHTS=false
+NEXT_PUBLIC_SPEED_INSIGHTS_SAMPLE_RATE=
 AI_PROVIDER=none
 AI_PLAN_TIER=base
 ADMIN_AI_ENABLED=false
@@ -96,12 +97,45 @@ OPENAI_EMBEDDING_MODEL=text-embedding-3-small
 ```
 
 Production notes:
+- `NEXT_PUBLIC_APP_URL` is optional at first deploy. If it is not set, the app uses `VERCEL_URL` at runtime.
 - `NEXT_PUBLIC_APP_URL` should match the deployed domain
 - AI is optional. The base product works with `AI_PROVIDER=none`
 - `OPENAI_API_KEY` enables premium admin AI and the premium search add-on when the feature flags are enabled
 - `GEMINI_API_KEY` can still be used as an optional secondary provider
 - Google OAuth must be enabled in Supabase Auth
+- `ENABLE_SPEED_INSIGHTS=true` enables Vercel Speed Insights in preview and production deployments
+- `NEXT_PUBLIC_SPEED_INSIGHTS_SAMPLE_RATE` can be left empty for the defaults or set to a value between `0` and `1`
 - for local development, Supabase Auth allowed redirect URLs must include `http://localhost:3000/auth/callback` or Google login may bounce back to production instead of localhost
+
+## Deploy with Vercel
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/dhruvrohitpatel/CaseFlow&project-name=caseflow&repository-name=caseflow-deployment&env=NEXT_PUBLIC_SUPABASE_URL,NEXT_PUBLIC_SUPABASE_ANON_KEY,SUPABASE_SERVICE_ROLE_KEY,ENABLE_SPEED_INSIGHTS,NEXT_PUBLIC_SPEED_INSIGHTS_SAMPLE_RATE,AI_PROVIDER,AI_PLAN_TIER,ADMIN_AI_ENABLED,SEMANTIC_SEARCH_ENABLED,OPENAI_API_KEY,GEMINI_API_KEY&envDescription=Add%20Supabase%20keys%2C%20optional%20AI%20keys%2C%20and%20Speed%20Insights%20flags.&demo-title=CaseFlow&demo-description=Deploy%20a%20single-nonprofit%20CaseFlow%20workspace%20to%20Vercel%20and%20Supabase.)
+
+Use this path when a CS student or technical volunteer is standing up a deployment:
+
+1. Click the deploy button.
+2. Create a new Supabase project.
+3. Add the required environment variables in Vercel.
+4. Apply every migration in `supabase/migrations/`.
+5. Configure Google OAuth in Supabase Auth.
+6. Visit the Vercel deployment and complete `/setup`.
+
+If you fork or convert this repo into a GitHub template, update the `repository-url` in the button to point at that template repository.
+
+## Speed Insights
+
+CaseFlow supports Vercel Speed Insights in preview and production deployments.
+
+1. Install dependencies with `pnpm install`.
+2. Set `ENABLE_SPEED_INSIGHTS=true` in Vercel.
+3. Deploy the app.
+4. Browse the deployed site and move between a few pages.
+5. Confirm data appears in the Vercel Speed Insights dashboard.
+
+Defaults:
+- local development stays off
+- production sampling defaults to `1`
+- preview sampling defaults to `0.25`
 
 ## Local development
 
@@ -154,6 +188,7 @@ CaseFlowDemo123!
 - [Feature test guide](/Users/dhruvpatel/Desktop/Projects/CaseFlow/docs/feature-test-guide.md)
 - [UX review](/Users/dhruvpatel/Desktop/Projects/CaseFlow/docs/ux-review.md)
 - [Launch package](/Users/dhruvpatel/Desktop/Projects/CaseFlow/docs/launch-package.md)
+- [Deployment checklist](/Users/dhruvpatel/Desktop/Projects/CaseFlow/docs/deployment-checklist.md)
 - [Provisioning guide](/Users/dhruvpatel/Desktop/Projects/CaseFlow/docs/provisioning-guide.md)
 - [Admin onboarding guide](/Users/dhruvpatel/Desktop/Projects/CaseFlow/docs/admin-onboarding-guide.md)
 - [Staff quick-start](/Users/dhruvpatel/Desktop/Projects/CaseFlow/docs/staff-quick-start.md)
@@ -170,6 +205,17 @@ CaseFlow is packaged as an operator-managed deployment kit:
 5. sign in as the first admin
 6. complete `/setup`
 7. add allowlist entries, import clients, and launch
+
+## Shipping recommendation
+
+The easiest setup path for a nonprofit is still a hosted deployment that you or a student helper prepares for them.
+
+If someone technical needs to stand it up themselves, use:
+- GitHub as the template/distribution layer
+- Vercel as the host
+- Supabase as the database and auth backend
+
+Do not use GitHub as the runtime host for this app. CaseFlow depends on Next.js server features, protected environment variables, OAuth callbacks, and Supabase service access.
 
 ## Deferred intentionally
 

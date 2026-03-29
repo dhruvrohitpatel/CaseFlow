@@ -5,6 +5,7 @@ import {
   syncUserAccessFromAllowlist,
 } from "@/lib/access-allowlist";
 import type { Database } from "@/lib/database.types";
+import { getOrganizationSettings, isSetupComplete } from "@/lib/organization-settings";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
@@ -18,6 +19,20 @@ const dashboardPathByRole: Record<AppRole, string> = {
 
 export function getDashboardPathForRole(role: AppRole) {
   return dashboardPathByRole[role];
+}
+
+export function getPostAuthRedirectPath(role: AppRole, setupComplete: boolean) {
+  if (role === "admin" && !setupComplete) {
+    return "/setup";
+  }
+
+  return getDashboardPathForRole(role);
+}
+
+export async function resolvePostAuthRedirectPath(role: AppRole) {
+  const settings = await getOrganizationSettings();
+
+  return getPostAuthRedirectPath(role, isSetupComplete(settings));
 }
 
 async function resolveSession(redirectOnDenied: boolean) {

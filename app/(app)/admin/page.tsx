@@ -144,7 +144,7 @@ export default async function AdminPage({
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Link className={outlineLinkClassName} href="/setup">
+          <Link className={outlineLinkClassName} href="/setup" prefetch={false}>
             {setupComplete ? "Reopen setup guide" : "Open setup guide"}
           </Link>
           <Link className={outlineLinkClassName} href="/dashboard/customize?scope=role&targetRole=admin">
@@ -181,7 +181,7 @@ export default async function AdminPage({
             </p>
           </div>
           <Badge className="brand-chip border-0">{setupComplete ? "Launch ready" : "Setup in progress"}</Badge>
-          <Link className={outlineLinkClassName} href="/setup">
+          <Link className={outlineLinkClassName} href="/setup" prefetch={false}>
             Update branding
           </Link>
         </CardContent>

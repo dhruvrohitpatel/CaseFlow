@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ArrowRight, BadgeCheck, BriefcaseBusiness, Palette, UsersRound } from "lucide-react";
 import { redirect } from "next/navigation";
 
-import { getCurrentSession } from "@/lib/auth";
+import { getCurrentSession, resolvePostAuthRedirectPath } from "@/lib/auth";
 import { getOrganizationSettings, getSupportHref } from "@/lib/organization-settings";
 
 const primaryLinkClassName =
@@ -17,7 +17,7 @@ export default async function HomePage() {
   ]);
 
   if (session) {
-    redirect("/dashboard");
+    redirect(await resolvePostAuthRedirectPath(session.profile.role));
   }
 
   const supportHref = getSupportHref(settings);

@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 
 import { PasswordLoginForm } from "@/components/forms/password-login-form";
 import { Card, CardContent } from "@/components/ui/card";
-import { getCurrentSession } from "@/lib/auth";
+import { getCurrentSession, resolvePostAuthRedirectPath } from "@/lib/auth";
 import { getOrganizationSettings, getSupportHref } from "@/lib/organization-settings";
 
 type PasswordLoginPageProps = {
@@ -32,7 +32,7 @@ export default async function PasswordLoginPage({
   ]);
 
   if (session) {
-    redirect("/dashboard");
+    redirect(await resolvePostAuthRedirectPath(session.profile.role));
   }
 
   const errorMessage = resolveError(params.error);

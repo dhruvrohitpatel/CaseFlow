@@ -16,6 +16,48 @@ import {
   getServiceEntryCustomFieldValues,
 } from "@/lib/custom-fields";
 
+function NoteContent({ notes }: { notes: string }) {
+  const sections = notes.split("\n\n").filter(Boolean);
+  const isStructured = sections.some((s) => /^[A-Z][A-Z /]+\n/.test(s));
+
+  if (!isStructured) {
+    return <p className="text-sm leading-6 text-stone-700">{notes}</p>;
+  }
+
+  return (
+    <div className="space-y-3 text-sm text-stone-700">
+      {sections.map((section, i) => {
+        const newlineIdx = section.indexOf("\n");
+
+        if (newlineIdx === -1) {
+          const colonIdx = section.indexOf(": ");
+          if (colonIdx > 0 && /^[A-Z]/.test(section)) {
+            return (
+              <div key={i} className="flex flex-wrap gap-x-2">
+                <span className="text-xs font-semibold uppercase tracking-wide text-stone-400">
+                  {section.slice(0, colonIdx)}
+                </span>
+                <span>{section.slice(colonIdx + 2)}</span>
+              </div>
+            );
+          }
+          return <p key={i}>{section}</p>;
+        }
+
+        const title = section.slice(0, newlineIdx);
+        const content = section.slice(newlineIdx + 1);
+
+        return (
+          <div key={i} className="space-y-0.5">
+            <p className="text-xs font-semibold uppercase tracking-wide text-stone-400">{title}</p>
+            <p className="leading-6">{content}</p>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 type ClientProfilePageProps = {
   params: Promise<{ id: string }>;
   searchParams: Promise<{
@@ -213,16 +255,7 @@ export default async function ClientProfilePage({
                     </div>
                     <Badge variant="outline">Service log</Badge>
                   </div>
-                  <p className="text-sm leading-6 text-stone-700">{entry.notes}</p>
-                  {serviceDisplayValues.get(entry.id)?.length ? (
-                    <div className="rounded-xl bg-stone-50 p-4">
-                      <CustomFieldDisplayList
-                        emptyMessage=""
-                        title="Custom service fields"
-                        values={serviceDisplayValues.get(entry.id) ?? []}
-                      />
-                    </div>
-                  ) : null}
+                  <NoteContent notes={entry.notes} />
                   {index < history.length - 1 ? <Separator /> : null}
                 </div>
               ))}

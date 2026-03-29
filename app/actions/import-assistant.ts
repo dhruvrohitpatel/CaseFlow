@@ -18,9 +18,16 @@ import {
   importTargetEntitySchema,
 } from "@/lib/import-assistant";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { CSV_UPLOAD_RULE, validateUploadFile } from "@/lib/uploads";
 
 function redirectWithError(error: string): never {
   redirect(`/admin/import-assistant?error=${error}`);
+}
+
+function redirectWithErrorMessage(error: string, message: string): never {
+  redirect(
+    `/admin/import-assistant?error=${error}&message=${encodeURIComponent(message)}`,
+  );
 }
 
 export async function analyzeImportAssistantAction(formData: FormData) {
@@ -37,6 +44,12 @@ export async function analyzeImportAssistantAction(formData: FormData) {
   }
 
   const file = uploadedValue as File;
+  const fileValidationError = validateUploadFile(file, CSV_UPLOAD_RULE);
+
+  if (fileValidationError) {
+    redirectWithErrorMessage("missing-file", fileValidationError);
+  }
+
   const text = await file.text();
   const payload = getImportPromptPayload(file.name, text);
 

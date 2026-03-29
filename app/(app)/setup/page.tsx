@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { OrganizationSetupForms } from "@/components/forms/organization-setup-forms";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageErrorState } from "@/components/ui/page-error-state";
 import { getAiFeatureState } from "@/lib/ai/capabilities";
 import { getDashboardPathForRole, requireRole } from "@/lib/auth";
 import {
@@ -18,28 +19,34 @@ type SetupPageProps = {
 };
 
 export default async function SetupPage({ searchParams }: SetupPageProps) {
-  const [{ profile, supabase }, settings, params] = await Promise.all([
+  const [{ profile, supabase }, settingsResult, params] = await Promise.all([
     requireRole(["admin"]),
-    getOrganizationSettings(),
+    getOrganizationSettings()
+      .then((data) => ({ data, error: null }))
+      .catch((error: unknown) => ({
+        data: null,
+        error: error instanceof Error ? error.message : "Setup settings could not be loaded.",
+      })),
     searchParams,
   ]);
   const adminAi = getAiFeatureState("admin_ai");
+  const settings = settingsResult.data;
   const [{ count: accessCount, error: accessError }, { data: themeDrafts, error: themeDraftError }] =
-    await Promise.all([
-      supabase.from("access_allowlist").select("*", { count: "exact", head: true }),
-      supabase
-        .from("organization_theme_drafts")
-        .select("id, created_at, prompt, theme_recipe, applied_at")
-        .order("created_at", { ascending: false })
-        .limit(4),
-    ]);
+    settings
+      ? await Promise.all([
+          supabase.from("access_allowlist").select("*", { count: "exact", head: true }),
+          supabase
+            .from("organization_theme_drafts")
+            .select("id, created_at, prompt, theme_recipe, applied_at")
+            .order("created_at", { ascending: false })
+            .limit(4),
+        ])
+      : [{ count: 0, error: null }, { data: [], error: null }];
 
-  if (accessError || themeDraftError) {
-    throw new Error(accessError?.message ?? themeDraftError?.message);
-  }
-
-  const steps = getSetupChecklist(settings);
-  const complete = isSetupComplete(settings);
+  const pageError =
+    settingsResult.error ?? accessError?.message ?? themeDraftError?.message ?? null;
+  const steps = settings ? getSetupChecklist(settings) : [];
+  const complete = settings ? isSetupComplete(settings) : false;
 
   return (
     <div className="space-y-6">
@@ -52,6 +59,9 @@ export default async function SetupPage({ searchParams }: SetupPageProps) {
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           We could not update that setup step. Try again.
         </div>
+      ) : null}
+      {pageError ? (
+        <PageErrorState description={pageError} title="Part of the setup guide is unavailable." />
       ) : null}
 
       <Card className="brand-card border shadow-sm">
@@ -77,21 +87,23 @@ export default async function SetupPage({ searchParams }: SetupPageProps) {
         </CardContent>
       </Card>
 
-      <OrganizationSetupForms
-        accessCount={accessCount ?? 0}
-        adminAiEnabled={adminAi.enabled}
-        adminAiPlanLabel={adminAi.planLabel}
-        adminAiUnavailableMessage={adminAi.unavailableMessage}
-        organizationSettings={settings}
-        steps={steps}
-        themeDrafts={(themeDrafts ?? []) as Array<{
-          applied_at: string | null;
-          created_at: string;
-          id: string;
-          prompt: string;
-          theme_recipe: Record<string, string | null>;
-        }>}
-      />
+      {settings ? (
+        <OrganizationSetupForms
+          accessCount={accessCount ?? 0}
+          adminAiEnabled={adminAi.enabled}
+          adminAiPlanLabel={adminAi.planLabel}
+          adminAiUnavailableMessage={adminAi.unavailableMessage}
+          organizationSettings={settings}
+          steps={steps}
+          themeDrafts={(themeDrafts ?? []) as Array<{
+            applied_at: string | null;
+            created_at: string;
+            id: string;
+            prompt: string;
+            theme_recipe: Record<string, string | null>;
+          }>}
+        />
+      ) : null}
     </div>
   );
 }

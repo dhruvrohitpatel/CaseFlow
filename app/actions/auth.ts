@@ -10,7 +10,7 @@ import {
   normalizeEmail,
   syncUserAccessFromAllowlist,
 } from "@/lib/access-allowlist";
-import { requireCurrentSession } from "@/lib/auth";
+import { requireCurrentSession, resolvePostAuthRedirectPath } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { resetPasswordSchema, signInSchema, signUpSchema } from "@/lib/validators/auth";
 
@@ -77,7 +77,7 @@ export async function signInAction(
     }
   }
 
-  redirect("/dashboard");
+  redirect(await resolvePostAuthRedirectPath(allowlistEntry.role));
 }
 
 export async function signUpAction(
@@ -134,7 +134,7 @@ export async function signUpAction(
   }
 
   if (data.session) {
-    redirect("/dashboard");
+    redirect(await resolvePostAuthRedirectPath(allowlistEntry.role));
   }
 
   return {
@@ -187,7 +187,7 @@ export async function resetPasswordAction(
   }
 
   revalidatePath("/dashboard");
-  redirect("/dashboard");
+  redirect(await resolvePostAuthRedirectPath(session.profile.role));
 }
 
 export async function signOutAction() {

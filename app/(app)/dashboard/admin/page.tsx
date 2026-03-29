@@ -91,7 +91,11 @@ export default async function AdminDashboardPage({
                 {completedSetupItems}/{setupChecklist.length}
               </div>
             </div>
-            <Link className="inline-flex items-center gap-1 text-sm font-medium text-stone-900 hover:underline" href="/setup">
+            <Link
+              className="inline-flex items-center gap-1 text-sm font-medium text-stone-900 hover:underline"
+              href="/setup"
+              prefetch={false}
+            >
               Open setup
               <ArrowRight className="size-4" />
             </Link>
