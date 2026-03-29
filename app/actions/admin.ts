@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import type { ActionState } from "@/lib/actions/form-state";
+import { normalizeEmail } from "@/lib/access-allowlist";
 import { requireRole } from "@/lib/auth";
 import {
   customFieldDefinitionSchema,
@@ -11,6 +12,7 @@ import {
   toSelectOptionsJson,
 } from "@/lib/custom-fields";
 import { parseClientCsvImport } from "@/lib/csv";
+import { createAccessAllowlistEntrySchema } from "@/lib/validators/access-allowlist";
 
 export type CsvImportState = {
   imported?: number;
@@ -184,4 +186,201 @@ export async function deleteCustomFieldDefinitionAction(formData: FormData) {
   revalidatePath("/admin");
   revalidatePath("/clients/new");
   redirect("/admin?deleted=1");
+}
+
+export async function createAllowlistEntryAction(
+  _previousState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const parsed = createAccessAllowlistEntrySchema.safeParse({
+    email: formData.get("email"),
+    linkedClientId: formData.get("linkedClientId"),
+    notes: formData.get("notes"),
+    role: formData.get("role"),
+  });
+
+  if (!parsed.success) {
+    return {
+      fieldErrors: getFieldErrors(parsed.error),
+      message: "Fix the highlighted access fields and try again.",
+      status: "error",
+    };
+  }
+
+  const { profile, supabase } = await requireRole(["admin"]);
+  const email = normalizeEmail(parsed.data.email);
+  const linkedClientId = parsed.data.role === "client" ? parsed.data.linkedClientId : null;
+  const { data: existingEntry, error: existingEntryError } = await supabase
+    .from("access_allowlist")
+    .select("id, linked_client_id, role")
+    .eq("email", email)
+    .maybeSingle();
+
+  if (existingEntryError) {
+    return {
+      message: "We could not read the existing access entry.",
+      status: "error",
+    };
+  }
+
+  if (parsed.data.role === "client" && linkedClientId) {
+    const { data: client, error: clientError } = await supabase
+      .from("clients")
+      .select("id")
+      .eq("id", linkedClientId)
+      .single();
+
+    if (clientError || !client) {
+      return {
+        message: "We could not find that client record.",
+        status: "error",
+      };
+    }
+  }
+
+  if (
+    existingEntry?.role === "client" &&
+    existingEntry.linked_client_id &&
+    existingEntry.linked_client_id !== linkedClientId
+  ) {
+    const { error: clearError } = await supabase
+      .from("clients")
+      .update({
+        portal_profile_id: null,
+      })
+      .eq("id", existingEntry.linked_client_id);
+
+    if (clearError) {
+      return {
+        message: "We could not clear the previous client portal link.",
+        status: "error",
+      };
+    }
+  }
+
+  const { error } = await supabase.from("access_allowlist").upsert(
+    {
+      created_by: profile.id,
+      email,
+      is_active: true,
+      linked_client_id: linkedClientId || null,
+      notes: parsed.data.notes?.trim() || null,
+      role: parsed.data.role,
+    },
+    {
+      onConflict: "email",
+    },
+  );
+
+  if (error) {
+    return {
+      message:
+        error.message.includes("access_allowlist_unique_linked_client_idx")
+          ? "That client already has an approved portal email."
+          : "We could not save that approved access entry.",
+      status: "error",
+    };
+  }
+
+  revalidatePath("/admin");
+  revalidatePath("/dashboard/admin");
+  revalidatePath("/dashboard");
+
+  return {
+    message: `${parsed.data.role === "client" ? "Client portal" : "Team"} access approved for ${email}.`,
+    status: "success",
+  };
+}
+
+export async function toggleAllowlistEntryActiveAction(formData: FormData) {
+  const entryId = String(formData.get("entryId") ?? "");
+  const nextValue = String(formData.get("nextValue") ?? "") === "true";
+
+  if (!entryId) {
+    redirect("/admin?error=allowlist");
+  }
+
+  const { supabase } = await requireRole(["admin"]);
+  const { data: existingEntry, error: existingEntryError } = await supabase
+    .from("access_allowlist")
+    .select("linked_client_id, role")
+    .eq("id", entryId)
+    .maybeSingle();
+
+  if (existingEntryError) {
+    redirect("/admin?error=allowlist");
+  }
+
+  const { error } = await supabase
+    .from("access_allowlist")
+    .update({
+      is_active: nextValue,
+    })
+    .eq("id", entryId);
+
+  if (error) {
+    redirect("/admin?error=allowlist");
+  }
+
+  if (!nextValue && existingEntry?.role === "client" && existingEntry.linked_client_id) {
+    const { error: clearError } = await supabase
+      .from("clients")
+      .update({
+        portal_profile_id: null,
+      })
+      .eq("id", existingEntry.linked_client_id);
+
+    if (clearError) {
+      redirect("/admin?error=allowlist");
+    }
+  }
+
+  revalidatePath("/admin");
+  revalidatePath("/dashboard/admin");
+  redirect("/admin?accessUpdated=1");
+}
+
+export async function deleteAllowlistEntryAction(formData: FormData) {
+  const entryId = String(formData.get("entryId") ?? "");
+
+  if (!entryId) {
+    redirect("/admin?error=allowlist");
+  }
+
+  const { supabase } = await requireRole(["admin"]);
+  const { data: existingEntry, error: existingEntryError } = await supabase
+    .from("access_allowlist")
+    .select("linked_client_id, role")
+    .eq("id", entryId)
+    .maybeSingle();
+
+  if (existingEntryError) {
+    redirect("/admin?error=allowlist");
+  }
+
+  const { error } = await supabase
+    .from("access_allowlist")
+    .delete()
+    .eq("id", entryId);
+
+  if (error) {
+    redirect("/admin?error=allowlist");
+  }
+
+  if (existingEntry?.role === "client" && existingEntry.linked_client_id) {
+    const { error: clearError } = await supabase
+      .from("clients")
+      .update({
+        portal_profile_id: null,
+      })
+      .eq("id", existingEntry.linked_client_id);
+
+    if (clearError) {
+      redirect("/admin?error=allowlist");
+    }
+  }
+
+  revalidatePath("/admin");
+  revalidatePath("/dashboard/admin");
+  redirect("/admin?accessDeleted=1");
 }

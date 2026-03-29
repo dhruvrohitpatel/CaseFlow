@@ -18,15 +18,18 @@ type AppShellProps = {
 
 export function AppShell({ children, profile }: AppShellProps) {
   const pathname = usePathname();
-  const navItems = [
-    { href: "/dashboard", label: "Dashboard" },
-    { href: "/clients", label: "Clients" },
-    { href: "/clients/new", label: "New client" },
-    { href: "/schedule", label: "Schedule" },
-    ...(profile.role === "admin"
-      ? [{ href: "/admin", label: "Admin" }]
-      : []),
-  ];
+  const navItems =
+    profile.role === "client"
+      ? [{ href: "/dashboard", label: "Dashboard" }]
+      : [
+          { href: "/dashboard", label: "Dashboard" },
+          { href: "/clients", label: "Clients" },
+          { href: "/clients/new", label: "New client" },
+          { href: "/schedule", label: "Schedule" },
+          ...(profile.role === "admin"
+            ? [{ href: "/admin", label: "Admin" }]
+            : []),
+        ];
 
   return (
     <div className="min-h-screen bg-stone-100">
@@ -38,7 +41,9 @@ export function AppShell({ children, profile }: AppShellProps) {
                 CaseFlow
               </Link>
               <p className="text-sm text-stone-600">
-                Low-friction client and service tracking for nonprofit staff.
+                {profile.role === "client"
+                  ? "A simple read-only portal for appointments and status updates."
+                  : "Low-friction client and service tracking for nonprofit teams."}
               </p>
             </div>
             <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center">
@@ -55,7 +60,7 @@ export function AppShell({ children, profile }: AppShellProps) {
             {navItems.map((item) => {
               const isActive =
                 pathname === item.href ||
-                (item.href !== "/dashboard" && pathname.startsWith(item.href));
+                pathname.startsWith(`${item.href}/`);
 
               return (
                 <Link

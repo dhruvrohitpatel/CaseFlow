@@ -1,5 +1,5 @@
 import { AppShell } from "@/components/layout/app-shell";
-import { requireCurrentSession } from "@/lib/auth";
+import { requireAppSession } from "@/lib/auth";
 
 type ProtectedLayoutProps = {
   children: React.ReactNode;
@@ -8,7 +8,7 @@ type ProtectedLayoutProps = {
 export default async function ProtectedLayout({
   children,
 }: ProtectedLayoutProps) {
-  const { profile } = await requireCurrentSession();
+  const { profile } = await requireAppSession();
 
   return (
     <AppShell profile={profile}>

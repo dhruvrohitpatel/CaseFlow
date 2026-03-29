@@ -28,14 +28,26 @@ const DEMO_USERS = [
   {
     email: "admin@caseflow.demo",
     fullName: "Alex Morgan",
+    linkedClientPublicId: null,
+    mustResetPassword: false,
     password: "CaseFlowDemo123!",
     role: "admin" as const,
   },
   {
     email: "staff@caseflow.demo",
     fullName: "Jordan Lee",
+    linkedClientPublicId: null,
+    mustResetPassword: false,
     password: "CaseFlowDemo123!",
     role: "staff" as const,
+  },
+  {
+    email: "client@caseflow.demo",
+    fullName: "Marisol Vega",
+    linkedClientPublicId: "CF-DEMO-001",
+    mustResetPassword: false,
+    password: "CaseFlowDemo123!",
+    role: "client" as const,
   },
 ];
 
@@ -217,6 +229,22 @@ const detailedNotes = [
   "Resource referral completed. Sent pantry list, rental assistance application instructions, and a clinic contact. Staff will check in again within seven days.",
 ];
 
+function getSetupErrorMessage(error: { message: string }) {
+  if (error.message.includes("access_allowlist")) {
+    return "The access allowlist migration is not applied in Supabase yet. Run supabase/migrations/20260328233000_access_allowlist.sql and try seeding again.";
+  }
+
+  if (error.message.includes("must_reset_password")) {
+    return "The latest security migration is not applied in Supabase yet. Run supabase/migrations/20260328213000_client_portal_and_security.sql and try seeding again.";
+  }
+
+  if (error.message.includes("portal_profile_id")) {
+    return "The client portal migration is not applied in Supabase yet. Run supabase/migrations/20260328213000_client_portal_and_security.sql and try seeding again.";
+  }
+
+  return error.message;
+}
+
 async function ensureDemoUser(user: (typeof DEMO_USERS)[number]) {
   const { data: listedUsers, error: listError } = await supabase.auth.admin.listUsers({
     page: 1,
@@ -267,15 +295,17 @@ async function ensureDemoUser(user: (typeof DEMO_USERS)[number]) {
     email: user.email,
     full_name: user.fullName,
     id: authUser.id,
+    must_reset_password: user.mustResetPassword,
     role: user.role,
   });
 
   if (profileError) {
-    throw new Error(profileError.message);
+    throw new Error(getSetupErrorMessage(profileError));
   }
 
   return {
     id: authUser.id,
+    linkedClientPublicId: user.linkedClientPublicId,
     name: user.fullName,
   };
 }
@@ -283,7 +313,7 @@ async function ensureDemoUser(user: (typeof DEMO_USERS)[number]) {
 async function main() {
   console.log("Seeding CaseFlow demo data...");
 
-  const [adminUser, staffUser] = await Promise.all(
+  const [adminUser, staffUser, clientPortalUser] = await Promise.all(
     DEMO_USERS.map((user) => ensureDemoUser(user)),
   );
 
@@ -298,6 +328,18 @@ async function main() {
       serviceTypeError?.message ??
         "No service types found. Run the SQL migration before seeding.",
     );
+  }
+
+  const { error: deleteAllowlistError } = await supabase
+    .from("access_allowlist")
+    .delete()
+    .in(
+      "email",
+      DEMO_USERS.map((user) => user.email.toLowerCase()),
+    );
+
+  if (deleteAllowlistError) {
+    throw new Error(getSetupErrorMessage(deleteAllowlistError));
   }
 
   const { error: deleteClientsError } = await supabase
@@ -336,6 +378,52 @@ async function main() {
 
   if (clientInsertError || !insertedClients) {
     throw new Error(clientInsertError?.message ?? "Failed to insert demo clients.");
+  }
+
+  const clientIdByPublicId = new Map(
+    insertedClients.map((client) => [client.client_id, client.id]),
+  );
+
+  const { error: allowlistError } = await supabase.from("access_allowlist").upsert(
+    DEMO_USERS.map((user) => ({
+      created_by: adminUser.id,
+      email: user.email.toLowerCase(),
+      is_active: true,
+      linked_client_id: user.linkedClientPublicId
+        ? (clientIdByPublicId.get(user.linkedClientPublicId) ?? null)
+        : null,
+      notes: "Seeded demo access",
+      role: user.role,
+    })),
+    {
+      onConflict: "email",
+    },
+  );
+
+  if (allowlistError) {
+    throw new Error(getSetupErrorMessage(allowlistError));
+  }
+
+  if (clientPortalUser.linkedClientPublicId) {
+    const linkedClient = insertedClients.find((client) => client.client_id === clientPortalUser.linkedClientPublicId);
+
+    if (!linkedClient) {
+      throw new Error(
+        `Could not find seeded client ${clientPortalUser.linkedClientPublicId} for the demo portal user.`,
+      );
+    }
+
+    const { error: portalLinkError } = await supabase
+      .from("clients")
+      .update({
+        email: DEMO_USERS.find((user) => user.role === "client")?.email ?? null,
+        portal_profile_id: clientPortalUser.id,
+      })
+      .eq("id", linkedClient.id);
+
+    if (portalLinkError) {
+      throw new Error(getSetupErrorMessage(portalLinkError));
+    }
   }
 
   const serviceTypeMap = new Map(serviceTypes.map((serviceType) => [serviceType.name, serviceType.id]));

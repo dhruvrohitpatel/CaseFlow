@@ -1,51 +1,26 @@
 import { redirect } from "next/navigation";
 
-import type { User } from "@supabase/supabase-js";
-
+import {
+  AccessNotApprovedError,
+  syncUserAccessFromAllowlist,
+} from "@/lib/access-allowlist";
 import type { Database } from "@/lib/database.types";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
+type AppRole = ProfileRow["role"];
 
-export async function ensureProfile(user: User) {
-  const supabase = await createSupabaseServerClient();
-  const { data: existingProfile, error: existingProfileError } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", user.id)
-    .maybeSingle();
+const dashboardPathByRole: Record<AppRole, string> = {
+  admin: "/dashboard/admin",
+  client: "/dashboard/client",
+  staff: "/dashboard/staff",
+};
 
-  if (existingProfileError) {
-    throw new Error(existingProfileError.message);
-  }
-
-  if (existingProfile) {
-    return existingProfile;
-  }
-
-  const profilePayload = {
-    email: user.email ?? "",
-    full_name:
-      typeof user.user_metadata.full_name === "string"
-        ? user.user_metadata.full_name
-        : null,
-    id: user.id,
-  };
-
-  const { data: profile, error } = await supabase
-    .from("profiles")
-    .upsert(profilePayload)
-    .select("*")
-    .single();
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return profile;
+export function getDashboardPathForRole(role: AppRole) {
+  return dashboardPathByRole[role];
 }
 
-export async function getCurrentSession() {
+async function resolveSession(redirectOnDenied: boolean) {
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
@@ -55,17 +30,35 @@ export async function getCurrentSession() {
     return null;
   }
 
-  const profile = await ensureProfile(user);
+  try {
+    const { profile } = await syncUserAccessFromAllowlist(user);
 
-  return {
-    profile,
-    supabase,
-    user,
-  };
+    return {
+      profile,
+      supabase,
+      user,
+    };
+  } catch (error) {
+    if (error instanceof AccessNotApprovedError) {
+      await supabase.auth.signOut();
+
+      if (redirectOnDenied) {
+        redirect("/login?error=not-approved");
+      }
+
+      return null;
+    }
+
+    throw error;
+  }
+}
+
+export async function getCurrentSession() {
+  return resolveSession(false);
 }
 
 export async function requireCurrentSession() {
-  const session = await getCurrentSession();
+  const session = await resolveSession(true);
 
   if (!session) {
     redirect("/login");
@@ -74,11 +67,17 @@ export async function requireCurrentSession() {
   return session;
 }
 
-export async function requireRole(roles: ProfileRow["role"][]) {
+export async function requireAppSession() {
   const session = await requireCurrentSession();
 
+  return session;
+}
+
+export async function requireRole(roles: ProfileRow["role"][]) {
+  const session = await requireAppSession();
+
   if (!roles.includes(session.profile.role)) {
-    redirect("/dashboard?error=unauthorized");
+    redirect(`${getDashboardPathForRole(session.profile.role)}?error=unauthorized`);
   }
 
   return session;
@@ -90,4 +89,27 @@ export function getStaffDisplayName(profile: ProfileRow, fallbackEmail?: string)
   }
 
   return fallbackEmail ?? profile.email;
+}
+
+export async function getPortalClientForCurrentUser() {
+  const { profile, supabase } = await requireRole(["client"]);
+  const { data: client, error } = await supabase
+    .from("clients")
+    .select("*")
+    .eq("portal_profile_id", profile.id)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  if (!client) {
+    redirect("/login?error=portal-missing");
+  }
+
+  return {
+    client,
+    profile,
+    supabase,
+  };
 }

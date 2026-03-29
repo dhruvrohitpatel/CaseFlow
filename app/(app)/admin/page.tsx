@@ -1,9 +1,15 @@
 import Link from "next/link";
 
 import {
+  deleteAllowlistEntryAction,
   deleteCustomFieldDefinitionAction,
+  toggleAllowlistEntryActiveAction,
   toggleCustomFieldActiveAction,
 } from "@/app/actions/admin";
+import {
+  ApproveClientAccessForm,
+  ApproveTeamAccessForm,
+} from "@/components/forms/access-allowlist-forms";
 import { ClientCsvImportForm } from "@/components/forms/client-csv-import-form";
 import { CustomFieldDefinitionForm } from "@/components/forms/custom-field-definition-form";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +22,8 @@ import { requireRole } from "@/lib/auth";
 type AdminPageProps = {
   searchParams: Promise<{
     action?: string;
+    accessDeleted?: string;
+    accessUpdated?: string;
     deleted?: string;
     entity?: string;
     error?: string;
@@ -53,12 +61,57 @@ export default async function AdminPage({
     auditQuery,
   ]);
 
-  if (auditError) {
-    throw new Error(auditError.message);
+  const [
+    { data: accessEntries, error: accessEntriesError },
+    { data: clients, error: clientsError },
+  ] = await Promise.all([
+    supabase
+      .from("access_allowlist")
+      .select("id, email, role, is_active, notes, linked_client_id, created_at")
+      .order("role", { ascending: true })
+      .order("email", { ascending: true }),
+    supabase
+      .from("clients")
+      .select("id, client_id, full_name, email, status, portal_profile_id")
+      .order("full_name", { ascending: true }),
+  ]);
+
+  if (auditError || accessEntriesError || clientsError) {
+    throw new Error(
+      auditError?.message ??
+        accessEntriesError?.message ??
+        clientsError?.message,
+    );
   }
+
+  const clientLabelById = new Map(
+    (clients ?? []).map((client) => [client.id, `${client.full_name} (${client.client_id})`]),
+  );
+  const allowlistedClientIds = new Set(
+    (accessEntries ?? [])
+      .filter((entry) => entry.role === "client" && entry.linked_client_id)
+      .map((entry) => entry.linked_client_id),
+  );
+  const availableClients =
+    clients
+      ?.filter((client) => !allowlistedClientIds.has(client.id))
+      .map((client) => ({
+        id: client.id,
+        label: `${client.full_name} (${client.client_id})`,
+      })) ?? [];
 
   return (
     <div className="space-y-6">
+      {params.accessUpdated === "1" ? (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+          Approved access updated.
+        </div>
+      ) : null}
+      {params.accessDeleted === "1" ? (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+          Approved access removed.
+        </div>
+      ) : null}
       {params.updated === "1" ? (
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
           Field settings updated.
@@ -74,12 +127,17 @@ export default async function AdminPage({
           We could not update that field definition. Try again.
         </div>
       ) : null}
+      {params.error === "allowlist" ? (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          We could not update that approved access entry. Try again.
+        </div>
+      ) : null}
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="text-3xl font-semibold tracking-tight text-stone-950">Admin tools</h1>
           <p className="mt-2 text-sm text-stone-600">
-            Manage imports, shape dynamic fields, and review change history from one page.
+            Manage approved access, imports, field configuration, and change history from one page.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -92,9 +150,129 @@ export default async function AdminPage({
         </div>
       </div>
 
+      <section className="grid gap-6 xl:grid-cols-2">
+        <ApproveTeamAccessForm />
+        <ApproveClientAccessForm clients={availableClients} />
+      </section>
+
       <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
         <ClientCsvImportForm />
         <CustomFieldDefinitionForm />
+      </section>
+
+      <section className="grid gap-6 xl:grid-cols-2">
+        <Card className="border-stone-200 shadow-sm">
+          <CardHeader>
+            <CardTitle>Approved access</CardTitle>
+            <CardDescription>
+              Access is controlled by email allowlist. Google is preferred, and password fallback works only for approved emails.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {accessEntries && accessEntries.length > 0 ? (
+              <div className="overflow-hidden rounded-xl border border-stone-200">
+                <Table>
+                  <TableHeader className="bg-stone-50">
+                    <TableRow>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Role</TableHead>
+                      <TableHead>Linked client</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {accessEntries.map((entry) => (
+                      <TableRow key={entry.id}>
+                        <TableCell className="text-stone-600">{entry.email}</TableCell>
+                        <TableCell className="capitalize text-stone-600">{entry.role}</TableCell>
+                        <TableCell>
+                          {entry.linked_client_id ? (
+                            <span className="text-sm text-stone-600">
+                              {clientLabelById.get(entry.linked_client_id) ?? "Client record"}
+                            </span>
+                          ) : (
+                            <span className="text-sm text-stone-400">Not linked</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={entry.is_active ? "secondary" : "outline"}>
+                            {entry.is_active ? "Active" : "Inactive"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <form action={toggleAllowlistEntryActiveAction}>
+                              <input name="entryId" type="hidden" value={entry.id} />
+                              <input name="nextValue" type="hidden" value={String(!entry.is_active)} />
+                              <Button type="submit" variant="outline">
+                                {entry.is_active ? "Deactivate" : "Activate"}
+                              </Button>
+                            </form>
+                            <form action={deleteAllowlistEntryAction}>
+                              <input name="entryId" type="hidden" value={entry.id} />
+                              <Button type="submit" variant="ghost">
+                                Remove
+                              </Button>
+                            </form>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-dashed border-stone-300 bg-stone-50 px-6 py-10 text-sm text-stone-600">
+                No approved access entries yet.
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="border-stone-200 shadow-sm">
+          <CardHeader>
+            <CardTitle>Current client portal links</CardTitle>
+            <CardDescription>
+              These records are currently bound to a signed-in client profile. The allowlist entry is still the source of truth for future access.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {clients && clients.some((client) => client.portal_profile_id) ? (
+              <div className="overflow-hidden rounded-xl border border-stone-200">
+                <Table>
+                  <TableHeader className="bg-stone-50">
+                    <TableRow>
+                      <TableHead>Client</TableHead>
+                      <TableHead>Portal email</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {clients.filter((client) => client.portal_profile_id).map((client) => (
+                      <TableRow key={client.id}>
+                        <TableCell>
+                          <div className="font-medium text-stone-950">{client.full_name}</div>
+                          <div className="text-xs text-stone-500">{client.client_id}</div>
+                        </TableCell>
+                        <TableCell className="text-stone-600">{client.email ?? "No email set"}</TableCell>
+                        <TableCell>
+                          <Badge className="capitalize" variant="secondary">
+                            {client.status}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-dashed border-stone-300 bg-stone-50 px-6 py-10 text-sm text-stone-600">
+                No client portal accounts are linked yet.
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </section>
 
       <Card className="border-stone-200 shadow-sm">

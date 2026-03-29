@@ -7,7 +7,7 @@ import { requireRole } from "@/lib/auth";
 import { getDashboardReport } from "@/lib/reporting";
 
 export default async function DashboardPrintPage() {
-  const { supabase } = await requireRole(["admin", "staff"]);
+  const { supabase } = await requireRole(["admin"]);
   const report = await getDashboardReport(supabase);
 
   return (
