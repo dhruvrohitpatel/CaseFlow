@@ -25,7 +25,7 @@ export function CustomFieldDefinitionForm() {
       <CardHeader>
         <CardTitle>Configure profile fields</CardTitle>
         <CardDescription>
-          Add calm, targeted fields to client and service records without changing code again.
+          Add fields to client and service records. New fields appear in forms and profiles without changing code.
         </CardDescription>
       </CardHeader>
       <CardContent>

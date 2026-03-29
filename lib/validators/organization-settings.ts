@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { fontPairKeySchema, themePresetKeySchema } from "@/lib/theme-presets";
 
 const hexColorSchema = z
   .string()
@@ -15,12 +16,18 @@ const optionalTextSchema = z
 
 export const organizationBrandingSchema = z.object({
   accentColor: hexColorSchema,
+  borderColor: hexColorSchema,
+  canvasColor: hexColorSchema,
+  cardColor: hexColorSchema,
   dashboardHeadline: optionalTextSchema,
+  fontPairKey: fontPairKeySchema,
+  imageryPrompt: optionalTextSchema,
   organizationName: z.string().trim().min(2, "Add the organization name."),
   primaryColor: hexColorSchema,
   productSubtitle: z.string().trim().min(12, "Add a short product subtitle."),
   publicWelcomeText: z.string().trim().min(20, "Add a short welcome message."),
   surfaceTint: hexColorSchema,
+  themePresetKey: themePresetKeySchema,
 });
 
 export const organizationDetailsSchema = z.object({

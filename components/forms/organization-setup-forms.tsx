@@ -2,9 +2,12 @@
 
 import Link from "next/link";
 import { useActionState } from "react";
-import { CheckCircle2, Circle, ExternalLink, Upload } from "lucide-react";
+import { CheckCircle2, Circle, ExternalLink, Sparkles, Upload } from "lucide-react";
 
 import {
+  applyThemeDraftAction,
+  applyThemePresetAction,
+  generateThemeDraftAction,
   markSetupStepAction,
   updateOrganizationBrandingAction,
   updateOrganizationDetailsAction,
@@ -19,6 +22,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { initialActionState } from "@/lib/actions/form-state";
 import type { OrganizationSettings } from "@/lib/organization-settings";
+import { fontPairTokens, themePresets } from "@/lib/theme-presets";
 
 type SetupStep = {
   description: string;
@@ -31,6 +35,13 @@ type OrganizationSetupFormsProps = {
   accessCount: number;
   organizationSettings: OrganizationSettings;
   steps: readonly SetupStep[];
+  themeDrafts: Array<{
+    applied_at: string | null;
+    created_at: string;
+    id: string;
+    prompt: string;
+    theme_recipe: Record<string, string | null>;
+  }>;
 };
 
 function FieldError({ message }: { message?: string }) {
@@ -78,6 +89,7 @@ export function OrganizationSetupForms({
   accessCount,
   organizationSettings,
   steps,
+  themeDrafts,
 }: OrganizationSetupFormsProps) {
   const [brandingState, brandingAction] = useActionState(
     updateOrganizationBrandingAction,
@@ -85,6 +97,10 @@ export function OrganizationSetupForms({
   );
   const [detailsState, detailsAction] = useActionState(
     updateOrganizationDetailsAction,
+    initialActionState,
+  );
+  const [themeDraftState, themeDraftAction] = useActionState(
+    generateThemeDraftAction,
     initialActionState,
   );
   const completedSteps = steps.filter((step) => step.done).length;
@@ -96,11 +112,48 @@ export function OrganizationSetupForms({
           <CardHeader>
             <CardTitle>1. Branding</CardTitle>
             <CardDescription>
-              Make the workspace feel like the nonprofit’s own portal instead of a shared internal project.
+              Set the organization name, theme, and brand assets. These settings update the public site, login screens, and dashboard shell.
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form action={brandingAction} className="space-y-4">
+              <div className="space-y-3">
+                <Label>Theme preset</Label>
+                <div className="grid gap-3 md:grid-cols-2">
+                  {Object.entries(themePresets).map(([key, preset]) => (
+                    <button
+                      key={key}
+                      className={`rounded-2xl border p-4 text-left transition-colors ${
+                        organizationSettings.theme_preset_key === key
+                          ? "border-stone-900 bg-[rgb(var(--brand-surface-rgb)/0.5)]"
+                          : "border-stone-200 bg-white hover:bg-stone-50"
+                      }`}
+                      formAction={applyThemePresetAction}
+                      name="themePresetKey"
+                      type="submit"
+                      value={key}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="font-medium text-stone-950">{preset.label}</p>
+                        {organizationSettings.theme_preset_key === key ? (
+                          <Badge className="brand-chip border-0">Active</Badge>
+                        ) : null}
+                      </div>
+                      <p className="mt-2 text-sm leading-6 text-stone-600">{preset.description}</p>
+                      <div className="mt-3 flex gap-2">
+                        {[preset.recipe.canvas_color, preset.recipe.card_color, preset.recipe.primary_color, preset.recipe.accent_color].map((swatch) => (
+                          <span
+                            key={`${key}-${swatch}`}
+                            className="h-6 w-6 rounded-full border border-stone-300"
+                            style={{ backgroundColor: swatch }}
+                          />
+                        ))}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="organizationName">Organization name</Label>
@@ -108,8 +161,8 @@ export function OrganizationSetupForms({
                   <FieldError message={brandingState.fieldErrors?.organizationName?.[0]} />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="dashboardHeadline">Admin dashboard headline override</Label>
-                  <Input defaultValue={organizationSettings.dashboard_headline ?? ""} id="dashboardHeadline" name="dashboardHeadline" placeholder="Mission control for Community Bridge" />
+                  <Label htmlFor="dashboardHeadline">Dashboard headline override</Label>
+                  <Input defaultValue={organizationSettings.dashboard_headline ?? ""} id="dashboardHeadline" name="dashboardHeadline" placeholder="Operations overview for Community Bridge" />
                 </div>
               </div>
 
@@ -143,6 +196,71 @@ export function OrganizationSetupForms({
                 </div>
               </div>
 
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="space-y-2">
+                  <Label htmlFor="canvasColor">Canvas color</Label>
+                  <Input defaultValue={organizationSettings.canvas_color} id="canvasColor" name="canvasColor" type="color" />
+                  <FieldError message={brandingState.fieldErrors?.canvasColor?.[0]} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="cardColor">Card color</Label>
+                  <Input defaultValue={organizationSettings.card_color} id="cardColor" name="cardColor" type="color" />
+                  <FieldError message={brandingState.fieldErrors?.cardColor?.[0]} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="borderColor">Border color</Label>
+                  <Input defaultValue={organizationSettings.border_color} id="borderColor" name="borderColor" type="color" />
+                  <FieldError message={brandingState.fieldErrors?.borderColor?.[0]} />
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="themePresetKey">Selected theme mode</Label>
+                  <select
+                    className="flex h-10 w-full rounded-lg border border-stone-200 bg-white px-3 text-sm text-stone-950 outline-none transition-colors focus:border-stone-400"
+                    defaultValue={organizationSettings.theme_preset_key}
+                    id="themePresetKey"
+                    name="themePresetKey"
+                  >
+                    <option value="day">Day</option>
+                    <option value="night">Night</option>
+                    <option value="noir">Noir</option>
+                    <option value="notepad">Notepad</option>
+                    <option value="custom">Custom</option>
+                  </select>
+                  <FieldError message={brandingState.fieldErrors?.themePresetKey?.[0]} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="fontPairKey">Typography</Label>
+                  <select
+                    className="flex h-10 w-full rounded-lg border border-stone-200 bg-white px-3 text-sm text-stone-950 outline-none transition-colors focus:border-stone-400"
+                    defaultValue={organizationSettings.font_pair_key}
+                    id="fontPairKey"
+                    name="fontPairKey"
+                  >
+                    {Object.keys(fontPairTokens).map((fontKey) => (
+                      <option key={fontKey} value={fontKey}>
+                        {fontKey}
+                      </option>
+                    ))}
+                  </select>
+                  <FieldError message={brandingState.fieldErrors?.fontPairKey?.[0]} />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="imageryPrompt">Imagery direction</Label>
+                <Textarea
+                  defaultValue={organizationSettings.imagery_prompt ?? ""}
+                  id="imageryPrompt"
+                  name="imageryPrompt"
+                  placeholder="Documentary photography, neighborhood service centers, clear operational signage."
+                  rows={3}
+                />
+                <FieldError message={brandingState.fieldErrors?.imageryPrompt?.[0]} />
+              </div>
+
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="logoFile">Logo</Label>
@@ -167,9 +285,90 @@ export function OrganizationSetupForms({
 
         <Card className="brand-card">
           <CardHeader>
+            <CardTitle>Theme generator</CardTitle>
+            <CardDescription>
+              Describe the organization and visual direction. The generated draft stays review-only until you apply it.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <form action={themeDraftAction} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="themePrompt">Theme prompt</Label>
+                <Textarea
+                  id="themePrompt"
+                  name="themePrompt"
+                  placeholder="Housing nonprofit serving families. Use a darker workspace with strong contrast, warm neutrals, and clear field-operations styling."
+                  rows={4}
+                />
+              </div>
+              <FormMessage
+                message={themeDraftState.message}
+                tone={themeDraftState.status === "success" ? "success" : "error"}
+              />
+              <SubmitButton pendingLabel="Generating draft...">
+                <Sparkles className="size-4" />
+                Generate theme draft
+              </SubmitButton>
+            </form>
+
+            <div className="space-y-3">
+              <p className="text-sm font-medium text-stone-950">Recent drafts</p>
+              {themeDrafts.length ? (
+                themeDrafts.map((draft) => (
+                  <div key={draft.id} className="rounded-2xl border border-stone-200 bg-white p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="font-medium text-stone-950">
+                          {draft.applied_at ? "Applied draft" : "Draft ready for review"}
+                        </p>
+                        <p className="mt-1 text-sm text-stone-600">{draft.prompt}</p>
+                        <p className="mt-2 text-xs text-stone-500">
+                          {new Date(draft.created_at).toLocaleString()}
+                        </p>
+                      </div>
+                      {!draft.applied_at ? (
+                        <form action={applyThemeDraftAction}>
+                          <input name="draftId" type="hidden" value={draft.id} />
+                          <Button size="sm" type="submit" variant="outline">
+                            Apply draft
+                          </Button>
+                        </form>
+                      ) : (
+                        <Badge className="brand-chip border-0">Applied</Badge>
+                      )}
+                    </div>
+                    <div className="mt-3 flex gap-2">
+                      {[
+                        draft.theme_recipe.canvas_color,
+                        draft.theme_recipe.card_color,
+                        draft.theme_recipe.primary_color,
+                        draft.theme_recipe.accent_color,
+                      ]
+                        .filter(Boolean)
+                        .map((swatch) => (
+                          <span
+                            key={`${draft.id}-${swatch}`}
+                            className="h-6 w-6 rounded-full border border-stone-300"
+                            style={{ backgroundColor: String(swatch) }}
+                          />
+                        ))}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="rounded-2xl border border-dashed border-stone-300 bg-stone-50 px-5 py-6 text-sm text-stone-600">
+                  No drafts yet. Generate one from a written theme brief or choose a preset above.
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="brand-card">
+          <CardHeader>
             <CardTitle>2. Organization details</CardTitle>
             <CardDescription>
-              Keep support instructions, login copy, and access guidance consistent for staff and clients.
+              Set login copy, support contact details, and access guidance for staff and clients.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -214,7 +413,7 @@ export function OrganizationSetupForms({
           <CardHeader>
             <CardTitle>3. Access model and launch checklist</CardTitle>
             <CardDescription>
-              Keep the nonprofit launch process deliberate. The setup route stays visible until each critical handoff is reviewed.
+              Track the required launch steps. Keep access review, import planning, and final launch approval in one place.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -256,7 +455,7 @@ export function OrganizationSetupForms({
           <CardHeader>
             <CardTitle>Workspace preview</CardTitle>
             <CardDescription>
-              Preview how the login portal and shell will feel after branding is applied.
+              Preview the login portal and support panel with the current theme and branding settings.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -331,7 +530,7 @@ export function OrganizationSetupForms({
           <CardHeader>
             <CardTitle>Launch package</CardTitle>
             <CardDescription>
-              Keep onboarding simple for the nonprofit by packaging the same deployment and support materials every time.
+              Package the same deployment, onboarding, and import materials for each organization launch.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3 text-sm leading-6 text-stone-600">

@@ -224,9 +224,16 @@ const CUSTOM_FIELD_DEFINITIONS: Database["public"]["Tables"]["custom_field_defin
 ];
 
 const detailedNotes = [
-  "Initial intake completed. Discussed transportation barriers, food insecurity, and follow-up scheduling for benefits renewal.",
-  "Case management follow-up completed. Client shared that temporary housing remains unstable, but they connected with a shelter partner and need help with work documentation next week.",
-  "Resource referral completed. Sent pantry list, rental assistance application instructions, and a clinic contact. Staff will check in again within seven days.",
+  "Initial intake completed. Reviewed transportation barriers, food insecurity, and SNAP renewal requirements. Scheduled a follow-up call to confirm document upload.",
+  "Housing stabilization follow-up completed. Client reported a pending utility shutoff notice and needs rental assistance paperwork plus landlord ledger before Friday.",
+  "Resource referral completed. Sent pantry locations, emergency food delivery options, and bus pass instructions for the benefits office appointment.",
+  "Shelter coordination completed. Client connected with an overnight shelter and requested help with employment verification for rapid rehousing screening.",
+  "School liaison follow-up completed. Staff documented attendance concerns, transportation issues, and a request for youth services referral next week.",
+  "Domestic violence safety planning reviewed. Shared hotline contact details, confidential shelter options, and next-step planning for secure communication.",
+  "Benefits navigation completed. Staff confirmed Medicaid renewal status, SNAP recertification deadlines, and pharmacy transport support.",
+  "Case conference note recorded. Discussed work documentation, childcare gaps, and appointment scheduling for family resource center intake.",
+  "Follow-up call completed. Client needs a replacement ID, proof of income, and a warm handoff to legal aid for eviction prevention.",
+  "Employment support session completed. Staff updated resume referral, verified interview clothing voucher status, and documented transit support request.",
 ];
 
 function getSetupErrorMessage(error: { message: string }) {
@@ -453,9 +460,8 @@ async function main() {
         serviceDate.setDate(serviceDate.getDate() - dayOffset);
 
         const notes =
-          index < 3
-            ? detailedNotes[serviceIndex % detailedNotes.length]
-            : `${serviceTypeName} completed. Staff reviewed progress, confirmed contact details, and documented next steps for the client.`;
+          detailedNotes[(index * 3 + serviceIndex) % detailedNotes.length] ??
+          `${serviceTypeName} completed. Staff reviewed progress, confirmed contact details, and documented next steps.`;
 
         return {
           client_id: client.id,

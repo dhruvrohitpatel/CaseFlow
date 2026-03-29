@@ -22,12 +22,18 @@ export default async function SetupPage({ searchParams }: SetupPageProps) {
     getOrganizationSettings(),
     searchParams,
   ]);
-  const { count: accessCount, error: accessError } = await supabase
-    .from("access_allowlist")
-    .select("*", { count: "exact", head: true });
+  const [{ count: accessCount, error: accessError }, { data: themeDrafts, error: themeDraftError }] =
+    await Promise.all([
+      supabase.from("access_allowlist").select("*", { count: "exact", head: true }),
+      supabase
+        .from("organization_theme_drafts")
+        .select("id, created_at, prompt, theme_recipe, applied_at")
+        .order("created_at", { ascending: false })
+        .limit(4),
+    ]);
 
-  if (accessError) {
-    throw new Error(accessError.message);
+  if (accessError || themeDraftError) {
+    throw new Error(accessError?.message ?? themeDraftError?.message);
   }
 
   const steps = getSetupChecklist(settings);
@@ -73,6 +79,13 @@ export default async function SetupPage({ searchParams }: SetupPageProps) {
         accessCount={accessCount ?? 0}
         organizationSettings={settings}
         steps={steps}
+        themeDrafts={(themeDrafts ?? []) as Array<{
+          applied_at: string | null;
+          created_at: string;
+          id: string;
+          prompt: string;
+          theme_recipe: Record<string, string | null>;
+        }>}
       />
     </div>
   );

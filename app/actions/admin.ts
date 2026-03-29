@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { randomUUID } from "node:crypto";
 
 import type { ActionState } from "@/lib/actions/form-state";
+import { generateThemeDraft } from "@/lib/ai/gemini-workflows";
 import { normalizeEmail } from "@/lib/access-allowlist";
 import { requireRole } from "@/lib/auth";
 import {
@@ -14,11 +15,12 @@ import {
 } from "@/lib/custom-fields";
 import { parseClientCsvImport } from "@/lib/csv";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { getThemePreset, themePresetKeySchema } from "@/lib/theme-presets";
 import { createAccessAllowlistEntrySchema } from "@/lib/validators/access-allowlist";
 import {
+  type SetupProgress,
   organizationBrandingSchema,
   organizationDetailsSchema,
-  type SetupProgress,
 } from "@/lib/validators/organization-settings";
 
 export type CsvImportState = {
@@ -120,7 +122,9 @@ function revalidateBrandingSurfaces() {
   revalidatePath("/dashboard/admin");
   revalidatePath("/dashboard/staff");
   revalidatePath("/dashboard/client");
+  revalidatePath("/dashboard/customize");
   revalidatePath("/admin");
+  revalidatePath("/admin/import-assistant");
   revalidatePath("/setup");
 }
 
@@ -522,12 +526,18 @@ export async function updateOrganizationBrandingAction(
 ): Promise<ActionState> {
   const parsed = organizationBrandingSchema.safeParse({
     accentColor: formData.get("accentColor"),
+    borderColor: formData.get("borderColor"),
+    canvasColor: formData.get("canvasColor"),
+    cardColor: formData.get("cardColor"),
     dashboardHeadline: formData.get("dashboardHeadline"),
+    fontPairKey: formData.get("fontPairKey"),
+    imageryPrompt: formData.get("imageryPrompt"),
     organizationName: formData.get("organizationName"),
     primaryColor: formData.get("primaryColor"),
     productSubtitle: formData.get("productSubtitle"),
     publicWelcomeText: formData.get("publicWelcomeText"),
     surfaceTint: formData.get("surfaceTint"),
+    themePresetKey: formData.get("themePresetKey"),
   });
 
   if (!parsed.success) {
@@ -561,8 +571,13 @@ export async function updateOrganizationBrandingAction(
       .from("organization_settings")
       .update({
         accent_color: parsed.data.accentColor,
+        border_color: parsed.data.borderColor,
+        canvas_color: parsed.data.canvasColor,
+        card_color: parsed.data.cardColor,
         dashboard_headline: parsed.data.dashboardHeadline,
         favicon_url: faviconUrl,
+        font_pair_key: parsed.data.fontPairKey,
+        imagery_prompt: parsed.data.imageryPrompt,
         logo_url: logoUrl,
         organization_name: parsed.data.organizationName,
         primary_color: parsed.data.primaryColor,
@@ -573,6 +588,7 @@ export async function updateOrganizationBrandingAction(
           branding: true,
         },
         surface_tint: parsed.data.surfaceTint,
+        theme_preset_key: parsed.data.themePresetKey,
       })
       .eq("id", settings.id);
 
@@ -595,6 +611,162 @@ export async function updateOrganizationBrandingAction(
     message: "Branding updated. The app shell, landing page, and login screens now use these settings.",
     status: "success",
   };
+}
+
+export async function applyThemePresetAction(formData: FormData) {
+  await requireRole(["admin"]);
+  const presetKey = themePresetKeySchema.parse(String(formData.get("themePresetKey") ?? "day"));
+  const preset = getThemePreset(presetKey);
+
+  if (!preset) {
+    redirect("/setup?error=theme");
+  }
+
+  const settings = await getOrganizationSettingsRow();
+  const currentProgress = normalizeSetupProgress(settings.setup_progress);
+  const supabase = createSupabaseAdminClient();
+  const { error } = await supabase
+    .from("organization_settings")
+    .update({
+      accent_color: preset.recipe.accent_color,
+      border_color: preset.recipe.border_color,
+      canvas_color: preset.recipe.canvas_color,
+      card_color: preset.recipe.card_color,
+      font_pair_key: preset.recipe.font_pair_key,
+      imagery_prompt: preset.recipe.imagery_prompt,
+      primary_color: preset.recipe.primary_color,
+      setup_progress: {
+        ...currentProgress,
+        branding: true,
+      },
+      surface_tint: preset.recipe.surface_tint,
+      theme_preset_key: preset.recipe.theme_preset_key,
+    })
+    .eq("id", settings.id);
+
+  if (error) {
+    redirect("/setup?error=theme");
+  }
+
+  revalidateBrandingSurfaces();
+  redirect("/setup?saved=1");
+}
+
+export async function generateThemeDraftAction(
+  _previousState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const prompt = String(formData.get("themePrompt") ?? "").trim();
+
+  if (prompt.length < 16) {
+    return {
+      message: "Describe the nonprofit and the visual direction before generating a theme draft.",
+      status: "error",
+    };
+  }
+
+  const { profile } = await requireRole(["admin"]);
+  const settings = await getOrganizationSettingsRow();
+
+  try {
+    const draft = await generateThemeDraft({
+      currentTheme: {
+        accent_color: settings.accent_color,
+        border_color: settings.border_color,
+        canvas_color: settings.canvas_color,
+        card_color: settings.card_color,
+        font_pair_key: settings.font_pair_key,
+        primary_color: settings.primary_color,
+        surface_tint: settings.surface_tint,
+        theme_preset_key: settings.theme_preset_key,
+      },
+      organizationName: settings.organization_name,
+      prompt,
+    });
+    const supabase = createSupabaseAdminClient();
+    const { error } = await supabase.from("organization_theme_drafts").insert({
+      created_by: profile.id,
+      prompt,
+      theme_recipe: {
+        ...draft,
+        theme_preset_key: "custom",
+      },
+    });
+
+    if (error) {
+      return {
+        message: error.message,
+        status: "error",
+      };
+    }
+  } catch (error) {
+    return {
+      message:
+        error instanceof Error
+          ? error.message
+          : "Theme draft generation failed.",
+      status: "error",
+    };
+  }
+
+  revalidateBrandingSurfaces();
+
+  return {
+    message: "Theme draft generated. Review it before applying.",
+    status: "success",
+  };
+}
+
+export async function applyThemeDraftAction(formData: FormData) {
+  await requireRole(["admin"]);
+  const draftId = String(formData.get("draftId") ?? "");
+  const supabase = createSupabaseAdminClient();
+  const { data: draft, error } = await supabase
+    .from("organization_theme_drafts")
+    .select("id, theme_recipe")
+    .eq("id", draftId)
+    .single();
+
+  if (error || !draft) {
+    redirect("/setup?error=theme");
+  }
+
+  const settings = await getOrganizationSettingsRow();
+  const currentProgress = normalizeSetupProgress(settings.setup_progress);
+  const recipe = draft.theme_recipe as Record<string, string | null>;
+  const { error: updateError } = await supabase
+    .from("organization_settings")
+    .update({
+      accent_color: String(recipe.accent_color ?? settings.accent_color),
+      border_color: String(recipe.border_color ?? settings.border_color),
+      canvas_color: String(recipe.canvas_color ?? settings.canvas_color),
+      card_color: String(recipe.card_color ?? settings.card_color),
+      font_pair_key: String(recipe.font_pair_key ?? settings.font_pair_key),
+      imagery_prompt:
+        typeof recipe.imagery_prompt === "string"
+          ? recipe.imagery_prompt
+          : settings.imagery_prompt,
+      primary_color: String(recipe.primary_color ?? settings.primary_color),
+      setup_progress: {
+        ...currentProgress,
+        branding: true,
+      },
+      surface_tint: String(recipe.surface_tint ?? settings.surface_tint),
+      theme_preset_key: "custom",
+    })
+    .eq("id", settings.id);
+
+  if (updateError) {
+    redirect("/setup?error=theme");
+  }
+
+  await supabase
+    .from("organization_theme_drafts")
+    .update({ applied_at: new Date().toISOString() })
+    .eq("id", draft.id);
+
+  revalidateBrandingSurfaces();
+  redirect("/setup?saved=1");
 }
 
 export async function updateOrganizationDetailsAction(

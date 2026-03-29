@@ -134,7 +134,7 @@
   }
   body {
     @apply text-foreground;
-    background-color: color-mix(in srgb, white 72%, var(--brand-surface) 28%);
+    background-color: var(--brand-canvas);
   }
   html {
     @apply font-sans;
@@ -143,18 +143,18 @@
 
 @layer utilities {
   .brand-card {
-    background-color: rgb(255 255 255 / 0.96);
-    border-color: rgb(var(--brand-primary-rgb) / 0.12);
-    box-shadow: 0 12px 30px rgb(var(--brand-primary-rgb) / 0.05);
+    background-color: var(--brand-card);
+    border-color: rgb(var(--brand-border-rgb) / 0.85);
+    box-shadow: 0 10px 24px rgb(var(--brand-primary-rgb) / 0.06);
   }
 
   .brand-panel {
     background-color: rgb(var(--brand-surface-rgb) / 0.82);
-    border-color: rgb(var(--brand-primary-rgb) / 0.12);
+    border-color: rgb(var(--brand-border-rgb) / 0.75);
   }
 
   .brand-outline {
-    border-color: rgb(var(--brand-primary-rgb) / 0.12);
+    border-color: rgb(var(--brand-border-rgb) / 0.8);
   }
 
   .brand-chip {
@@ -181,8 +181,8 @@
   }
 
   .brand-gradient {
-    background-color: rgb(var(--brand-surface-rgb) / 0.72);
-    border-color: rgb(var(--brand-primary-rgb) / 0.12);
-    box-shadow: 0 12px 30px rgb(var(--brand-primary-rgb) / 0.05);
+    background-color: var(--brand-card);
+    border-color: rgb(var(--brand-border-rgb) / 0.85);
+    box-shadow: 0 10px 24px rgb(var(--brand-primary-rgb) / 0.06);
   }
 }

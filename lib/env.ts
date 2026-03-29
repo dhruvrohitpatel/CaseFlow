@@ -10,6 +10,7 @@ const serverEnvSchema = supabasePublicEnvSchema.extend({
 });
 
 const geminiApiKeySchema = z.string().min(1);
+const geminiTextModelSchema = z.string().min(1).default("gemini-2.0-flash");
 
 export function getSupabasePublicEnv() {
   return supabasePublicEnvSchema.parse({
@@ -28,6 +29,10 @@ export function getServerEnv() {
 
 export function getGeminiApiKey() {
   return geminiApiKeySchema.parse(process.env.GEMINI_API_KEY);
+}
+
+export function getGeminiTextModel() {
+  return geminiTextModelSchema.parse(process.env.GEMINI_TEXT_MODEL);
 }
 
 export function getAppUrl() {

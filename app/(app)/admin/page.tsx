@@ -147,6 +147,12 @@ export default async function AdminPage({
           <Link className={outlineLinkClassName} href="/setup">
             {setupComplete ? "Reopen setup guide" : "Open setup guide"}
           </Link>
+          <Link className={outlineLinkClassName} href="/dashboard/customize?scope=role&targetRole=admin">
+            Customize dashboards
+          </Link>
+          <Link className={outlineLinkClassName} href="/admin/import-assistant">
+            Open import assistant
+          </Link>
           <Link className={outlineLinkClassName} href="/api/templates/clients">
             Download CSV template
           </Link>
@@ -160,7 +166,7 @@ export default async function AdminPage({
         <CardHeader>
           <CardTitle>Workspace profile</CardTitle>
           <CardDescription>
-            Keep branding, setup, and admin operations connected so each nonprofit deployment feels consistent.
+            Review branding, setup status, and admin operations for this deployment.
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-[1fr_auto_auto] md:items-center">
@@ -169,6 +175,9 @@ export default async function AdminPage({
             <p className="mt-1 text-sm text-stone-600">{settings.product_subtitle}</p>
             <p className="mt-2 text-sm text-stone-500">
               Support contact: {settings.support_email ?? settings.support_phone ?? "Not configured yet"}
+            </p>
+            <p className="mt-1 text-sm text-stone-500">
+              Theme mode: {settings.theme_preset_key}
             </p>
           </div>
           <Badge className="brand-chip border-0">{setupComplete ? "Launch ready" : "Setup in progress"}</Badge>

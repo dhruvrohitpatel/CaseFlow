@@ -111,7 +111,7 @@ export default async function HomePage() {
               </div>
             </section>
 
-            <section className="brand-gradient rounded-[2rem] border border-stone-200 p-8 shadow-sm lg:p-10">
+            <section className="brand-card rounded-[2rem] border p-8 lg:p-10">
               <p className="text-sm font-medium uppercase tracking-[0.2em] text-stone-500">
                 What ships with each deployment
               </p>
@@ -125,7 +125,7 @@ export default async function HomePage() {
                 <div className="rounded-2xl border border-white/80 bg-white/88 p-5">
                   <h2 className="text-base font-semibold text-stone-950">Mission-control dashboard</h2>
                   <p className="mt-2 text-sm leading-6 text-stone-600">
-                    Track active clients, service activity, schedules, semantic note search, exports, and audit visibility from a calmer admin surface.
+                    Track active clients, service activity, schedules, semantic note search, exports, and audit visibility from one admin surface.
                   </p>
                 </div>
                 <div className="rounded-2xl border border-white/80 bg-white/88 p-5">

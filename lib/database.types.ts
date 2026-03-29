@@ -95,6 +95,101 @@ export type Database = {
           },
         ];
       };
+      dashboard_ai_recommendations: {
+        Row: {
+          created_at: string;
+          created_by: string;
+          id: string;
+          profile_id: string | null;
+          recommendations: Json;
+          target_role: Database["public"]["Enums"]["app_role"];
+          updated_at: string;
+          workflow_summary: Json;
+        };
+        Insert: {
+          created_at?: string;
+          created_by: string;
+          id?: string;
+          profile_id?: string | null;
+          recommendations?: Json;
+          target_role: Database["public"]["Enums"]["app_role"];
+          updated_at?: string;
+          workflow_summary?: Json;
+        };
+        Update: Partial<Database["public"]["Tables"]["dashboard_ai_recommendations"]["Insert"]>;
+        Relationships: [
+          {
+            foreignKeyName: "dashboard_ai_recommendations_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "dashboard_ai_recommendations_profile_id_fkey";
+            columns: ["profile_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      dashboard_role_layouts: {
+        Row: {
+          created_at: string;
+          id: string;
+          layout: Json;
+          role: Database["public"]["Enums"]["app_role"];
+          updated_at: string;
+          updated_by: string | null;
+        };
+        Insert: {
+          created_at?: string;
+          id?: string;
+          layout?: Json;
+          role: Database["public"]["Enums"]["app_role"];
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["dashboard_role_layouts"]["Insert"]>;
+        Relationships: [
+          {
+            foreignKeyName: "dashboard_role_layouts_updated_by_fkey";
+            columns: ["updated_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      dashboard_user_layout_overrides: {
+        Row: {
+          created_at: string;
+          id: string;
+          layout: Json;
+          profile_id: string;
+          role: Database["public"]["Enums"]["app_role"];
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          id?: string;
+          layout?: Json;
+          profile_id: string;
+          role: Database["public"]["Enums"]["app_role"];
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["dashboard_user_layout_overrides"]["Insert"]>;
+        Relationships: [
+          {
+            foreignKeyName: "dashboard_user_layout_overrides_profile_id_fkey";
+            columns: ["profile_id"];
+            isOneToOne: true;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       audit_logs: {
         Row: {
           action: string;
@@ -255,14 +350,57 @@ export type Database = {
           },
         ];
       };
+      import_assistant_sessions: {
+        Row: {
+          created_at: string;
+          created_by: string;
+          id: string;
+          mapping_plan: Json;
+          preview_rows: Json;
+          source_filename: string;
+          source_headers: Json;
+          status: string;
+          target_entity: string;
+          updated_at: string;
+          warnings: Json;
+        };
+        Insert: {
+          created_at?: string;
+          created_by: string;
+          id?: string;
+          mapping_plan?: Json;
+          preview_rows?: Json;
+          source_filename: string;
+          source_headers?: Json;
+          status?: string;
+          target_entity: string;
+          updated_at?: string;
+          warnings?: Json;
+        };
+        Update: Partial<Database["public"]["Tables"]["import_assistant_sessions"]["Insert"]>;
+        Relationships: [
+          {
+            foreignKeyName: "import_assistant_sessions_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       organization_settings: {
         Row: {
           accent_color: string;
           approved_domain_guidance: string;
+          border_color: string;
+          canvas_color: string;
+          card_color: string;
           created_at: string;
           dashboard_headline: string | null;
           favicon_url: string | null;
+          font_pair_key: string;
           id: string;
+          imagery_prompt: string | null;
           login_welcome_text: string;
           logo_url: string | null;
           organization_name: string;
@@ -275,15 +413,21 @@ export type Database = {
           support_email: string | null;
           support_phone: string | null;
           surface_tint: string;
+          theme_preset_key: string;
           updated_at: string;
         };
         Insert: {
           accent_color?: string;
           approved_domain_guidance?: string;
+          border_color?: string;
+          canvas_color?: string;
+          card_color?: string;
           created_at?: string;
           dashboard_headline?: string | null;
           favicon_url?: string | null;
+          font_pair_key?: string;
           id?: string;
+          imagery_prompt?: string | null;
           login_welcome_text?: string;
           logo_url?: string | null;
           organization_name?: string;
@@ -296,10 +440,39 @@ export type Database = {
           support_email?: string | null;
           support_phone?: string | null;
           surface_tint?: string;
+          theme_preset_key?: string;
           updated_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["organization_settings"]["Insert"]>;
         Relationships: [];
+      };
+      organization_theme_drafts: {
+        Row: {
+          applied_at: string | null;
+          created_at: string;
+          created_by: string;
+          id: string;
+          prompt: string;
+          theme_recipe: Json;
+        };
+        Insert: {
+          applied_at?: string | null;
+          created_at?: string;
+          created_by: string;
+          id?: string;
+          prompt: string;
+          theme_recipe?: Json;
+        };
+        Update: Partial<Database["public"]["Tables"]["organization_theme_drafts"]["Insert"]>;
+        Relationships: [
+          {
+            foreignKeyName: "organization_theme_drafts_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       profiles: {
         Row: {

@@ -71,7 +71,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 
               <div className="space-y-4">
                 <h1 className="max-w-xl text-4xl font-semibold tracking-tight text-stone-950">
-                  Calm, branded case management access for staff and invite-only client portals.
+                  Branded case management access for staff and invite-only client portals.
                 </h1>
                 <p className="max-w-2xl text-base leading-7 text-stone-600">
                   {settings.login_welcome_text}
