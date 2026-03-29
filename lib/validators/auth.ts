@@ -5,7 +5,7 @@ import zxcvbn from "zxcvbn";
 // We require at least score 3
 const MIN_ZXCVBN_SCORE = 3;
 
-const passwordSchema = z
+export const passwordSchema = z
   .string()
   .min(8, "Password must be at least 8 characters.")
   .max(72, "Password must be at most 72 characters.") // bcrypt truncates at 72 bytes
@@ -38,3 +38,13 @@ export const signUpSchema = z.object({
   fullName: z.string().trim().min(2, "Full name must be at least 2 characters."),
   password: passwordSchema,
 });
+
+export const resetPasswordSchema = z
+  .object({
+    confirmPassword: z.string().min(1, "Confirm your new password."),
+    password: passwordSchema,
+  })
+  .refine((value) => value.password === value.confirmPassword, {
+    message: "Passwords must match.",
+    path: ["confirmPassword"],
+  });

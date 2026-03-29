@@ -4,7 +4,7 @@ import { toCsv } from "@/lib/csv";
 export async function GET() {
   const session = await getCurrentSession();
 
-  if (!session) {
+  if (!session || session.profile.role !== "admin") {
     return new Response("Unauthorized", { status: 401 });
   }
 
