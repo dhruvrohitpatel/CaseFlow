@@ -13,7 +13,12 @@ Use this when standing up a new nonprofit deployment of CaseFlow.
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
    - `SUPABASE_SERVICE_ROLE_KEY`
-   - `GEMINI_API_KEY`
+   - `AI_PROVIDER`
+   - `AI_PLAN_TIER`
+   - `ADMIN_AI_ENABLED`
+   - `SEMANTIC_SEARCH_ENABLED`
+   - `OPENAI_API_KEY` when premium admin AI or semantic search is enabled
+   - optional `GEMINI_API_KEY` only if you want Gemini available as a secondary provider
 6. Deploy `main`.
 7. Sign in as the first approved admin.
 8. Complete `/setup`.

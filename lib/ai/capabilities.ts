@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const aiProviderSchema = z.enum(["none", "gemini"]);
+const aiProviderSchema = z.enum(["none", "gemini", "openai"]);
 const aiPlanTierSchema = z.enum([
   "base",
   "premium_admin_ai",
@@ -30,21 +30,30 @@ function parseBooleanFlag(value: string | undefined, fallback = false) {
   return ["1", "true", "yes", "on", "enabled"].includes(value.trim().toLowerCase());
 }
 
-function inferRequestedProvider(rawGeminiKey: string): AiProvider {
+function inferRequestedProvider(rawOpenAiKey: string, rawGeminiKey: string): AiProvider {
   const explicit = process.env.AI_PROVIDER?.trim().toLowerCase();
 
   if (explicit) {
     return aiProviderSchema.catch("none").parse(explicit);
   }
 
+  if (rawOpenAiKey) {
+    return "openai";
+  }
+
   return rawGeminiKey ? "gemini" : "none";
 }
 
 export function getAiCapabilities() {
+  const rawOpenAiKey = process.env.OPENAI_API_KEY?.trim() ?? "";
   const rawGeminiKey = process.env.GEMINI_API_KEY?.trim() ?? "";
-  const requestedProvider = inferRequestedProvider(rawGeminiKey);
+  const requestedProvider = inferRequestedProvider(rawOpenAiKey, rawGeminiKey);
   const aiProvider: AiProvider =
-    requestedProvider === "gemini" && rawGeminiKey ? "gemini" : "none";
+    requestedProvider === "openai" && rawOpenAiKey
+      ? "openai"
+      : requestedProvider === "gemini" && rawGeminiKey
+        ? "gemini"
+        : "none";
   const adminAiEnabled =
     aiProvider !== "none" && parseBooleanFlag(process.env.ADMIN_AI_ENABLED, false);
   const semanticSearchEnabled =
@@ -86,7 +95,7 @@ export function getAiFeatureState(feature: AiFeatureKey): AiFeatureState {
 
   return {
     description:
-      "CSV mapping suggestions, widget recommendations, and theme drafts for admins.",
+      "Photo-to-intake, CSV mapping suggestions, widget recommendations, and theme drafts for admins.",
     enabled: capabilities.adminAiEnabled,
     feature,
     planLabel: "Premium admin AI",
@@ -124,7 +133,8 @@ export function formatAiFeatureError(feature: AiFeatureKey, error: unknown) {
   if (
     normalized.includes("not configured") ||
     normalized.includes("missing ai provider") ||
-    normalized.includes("gemini_api_key")
+    normalized.includes("gemini_api_key") ||
+    normalized.includes("openai_api_key")
   ) {
     return getAiFeatureState(feature).unavailableMessage;
   }

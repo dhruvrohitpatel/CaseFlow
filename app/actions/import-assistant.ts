@@ -10,7 +10,7 @@ import {
   isSemanticSearchEnabled,
 } from "@/lib/ai/capabilities";
 import { generateEmbedding, serializeVector } from "@/lib/ai/embeddings";
-import { inferImportPlan } from "@/lib/ai/gemini-workflows";
+import { inferImportPlan } from "@/lib/ai/workflows";
 import { requireRole } from "@/lib/auth";
 import {
   buildImportPreview,

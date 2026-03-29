@@ -85,12 +85,21 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 NEXT_PUBLIC_SUPABASE_URL=...
 NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 SUPABASE_SERVICE_ROLE_KEY=...
-GEMINI_API_KEY=...
+AI_PROVIDER=none
+AI_PLAN_TIER=base
+ADMIN_AI_ENABLED=false
+SEMANTIC_SEARCH_ENABLED=false
+OPENAI_API_KEY=...
+OPENAI_TEXT_MODEL=gpt-5-nano
+OPENAI_VISION_MODEL=gpt-4.1-mini
+OPENAI_EMBEDDING_MODEL=text-embedding-3-small
 ```
 
 Production notes:
 - `NEXT_PUBLIC_APP_URL` should match the deployed domain
-- `GEMINI_API_KEY` is required for semantic note search and embedding backfill
+- AI is optional. The base product works with `AI_PROVIDER=none`
+- `OPENAI_API_KEY` enables premium admin AI and the premium search add-on when the feature flags are enabled
+- `GEMINI_API_KEY` can still be used as an optional secondary provider
 - Google OAuth must be enabled in Supabase Auth
 - for local development, Supabase Auth allowed redirect URLs must include `http://localhost:3000/auth/callback` or Google login may bounce back to production instead of localhost
 

@@ -388,6 +388,59 @@ export type Database = {
           },
         ];
       };
+      intake_capture_sessions: {
+        Row: {
+          confidence_json: Json;
+          core_fields_json: Json;
+          created_at: string;
+          created_by: string;
+          created_client_id: string | null;
+          custom_fields_json: Json;
+          id: string;
+          model: string | null;
+          provider: string | null;
+          raw_model_output_json: Json;
+          source_filename: string;
+          source_image_path: string;
+          status: string;
+          updated_at: string;
+          warnings_json: Json;
+        };
+        Insert: {
+          confidence_json?: Json;
+          core_fields_json?: Json;
+          created_at?: string;
+          created_by: string;
+          created_client_id?: string | null;
+          custom_fields_json?: Json;
+          id?: string;
+          model?: string | null;
+          provider?: string | null;
+          raw_model_output_json?: Json;
+          source_filename: string;
+          source_image_path: string;
+          status?: string;
+          updated_at?: string;
+          warnings_json?: Json;
+        };
+        Update: Partial<Database["public"]["Tables"]["intake_capture_sessions"]["Insert"]>;
+        Relationships: [
+          {
+            foreignKeyName: "intake_capture_sessions_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "intake_capture_sessions_created_client_id_fkey";
+            columns: ["created_client_id"];
+            isOneToOne: false;
+            referencedRelation: "clients";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       organization_settings: {
         Row: {
           accent_color: string;

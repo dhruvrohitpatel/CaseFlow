@@ -18,6 +18,10 @@ export type CustomFieldDisplayValue = {
   label: string;
   value: string;
 };
+export type ParsedCustomFieldValue = {
+  definitionId: string;
+  value: string;
+};
 
 export function getCustomFieldInputName(definitionId: string) {
   return `customField:${definitionId}`;
@@ -182,7 +186,7 @@ export function parseCustomFieldFormValues(
   formData: FormData,
 ) {
   const fieldErrors: Record<string, string[]> = {};
-  const values: Array<{ definitionId: string; value: string }> = [];
+  const values: ParsedCustomFieldValue[] = [];
 
   for (const definition of definitions) {
     const key = getCustomFieldInputName(definition.id);
@@ -211,7 +215,7 @@ export function parseCustomFieldFormValues(
 export async function replaceClientCustomFieldValues(
   supabase: SupabaseClient<Database>,
   clientId: string,
-  values: Array<{ definitionId: string; value: string }>,
+  values: ParsedCustomFieldValue[],
 ) {
   const { error: deleteError } = await supabase
     .from("client_custom_field_values")
@@ -242,7 +246,7 @@ export async function replaceClientCustomFieldValues(
 export async function replaceServiceEntryCustomFieldValues(
   supabase: SupabaseClient<Database>,
   serviceEntryId: string,
-  values: Array<{ definitionId: string; value: string }>,
+  values: ParsedCustomFieldValue[],
 ) {
   const { error: deleteError } = await supabase
     .from("service_entry_custom_field_values")

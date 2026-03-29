@@ -6,7 +6,7 @@ import { randomUUID } from "node:crypto";
 
 import type { ActionState } from "@/lib/actions/form-state";
 import { formatAiFeatureError, getAiFeatureState } from "@/lib/ai/capabilities";
-import { generateThemeDraft } from "@/lib/ai/gemini-workflows";
+import { generateThemeDraft } from "@/lib/ai/workflows";
 import { normalizeEmail } from "@/lib/access-allowlist";
 import { requireRole } from "@/lib/auth";
 import {

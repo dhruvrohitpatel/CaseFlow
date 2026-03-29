@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { formatAiFeatureError, getAiFeatureState } from "@/lib/ai/capabilities";
-import { generateWidgetRecommendations } from "@/lib/ai/gemini-workflows";
+import { generateWidgetRecommendations } from "@/lib/ai/workflows";
 import {
   chartTypeSchema,
   dataSourceSchema,
