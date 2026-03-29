@@ -1,3 +1,7 @@
+import { notFound } from "next/navigation";
+
+import { isVoiceNotesEnabled } from "@/lib/ai/capabilities";
+import { requireRole } from "@/lib/auth";
 import { VoiceServiceEntry } from "@/components/voice/VoiceServiceEntry";
 import {
   Card,
@@ -6,9 +10,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { requireRole } from "@/lib/auth";
 
 export default async function ServicesPage() {
+  if (!isVoiceNotesEnabled()) {
+    notFound();
+  }
+
   const { supabase } = await requireRole(["admin", "staff"]);
 
   const [{ data: clients }, { data: serviceTypes }] = await Promise.all([

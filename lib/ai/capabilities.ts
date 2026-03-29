@@ -116,6 +116,10 @@ export function isAdminAiEnabled() {
   return getAiCapabilities().adminAiEnabled;
 }
 
+export function isVoiceNotesEnabled() {
+  return getAiCapabilities().aiProvider === "openai";
+}
+
 export function formatAiFeatureError(feature: AiFeatureKey, error: unknown) {
   const message = error instanceof Error ? error.message : String(error ?? "");
   const normalized = message.toLowerCase();

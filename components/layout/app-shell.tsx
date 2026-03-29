@@ -20,6 +20,7 @@ type AppShellProps = {
   organizationSettings: OrganizationSettings;
   profile: Profile;
   setupComplete: boolean;
+  voiceNotesEnabled: boolean;
 };
 
 function getRoleLabel(role: Profile["role"]) {
@@ -40,6 +41,7 @@ export function AppShell({
   organizationSettings,
   profile,
   setupComplete,
+  voiceNotesEnabled,
 }: AppShellProps) {
   const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
@@ -62,7 +64,7 @@ export function AppShell({
           { href: "/dashboard", label: "Dashboard" },
           { href: "/clients", label: "Clients" },
           { href: "/clients/new", label: "New client" },
-          { href: "/services", label: "Voice notes" },
+          ...(voiceNotesEnabled ? [{ href: "/services", label: "Voice notes" }] : []),
           { href: "/schedule", label: "Schedule" },
           ...(profile.role === "admin"
             ? [

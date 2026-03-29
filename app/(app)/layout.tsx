@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { AppShell } from "@/components/layout/app-shell";
+import { isVoiceNotesEnabled } from "@/lib/ai/capabilities";
 import { getDashboardPathForRole, requireAppSession } from "@/lib/auth";
 import { getOrganizationSettings, isSetupComplete } from "@/lib/organization-settings";
 
@@ -19,6 +20,7 @@ export default async function ProtectedLayout({
   ]);
   const pathname = requestHeaders.get("x-pathname") ?? "";
   const setupComplete = isSetupComplete(settings);
+  const voiceNotes = isVoiceNotesEnabled();
   const isSetupRoute = pathname.startsWith("/setup");
   const isAdminSafeRoute =
     pathname.startsWith("/admin") || pathname.startsWith("/dashboard/admin");
@@ -32,7 +34,12 @@ export default async function ProtectedLayout({
   }
 
   return (
-    <AppShell organizationSettings={settings} profile={profile} setupComplete={setupComplete}>
+    <AppShell
+      organizationSettings={settings}
+      profile={profile}
+      setupComplete={setupComplete}
+      voiceNotesEnabled={voiceNotes}
+    >
       {children}
     </AppShell>
   );
