@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Headset, LayoutTemplate, LifeBuoy } from "lucide-react";
+import { Headset, LayoutTemplate } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import type { Database } from "@/lib/database.types";
@@ -77,15 +77,15 @@ export function AppShell({
     <div className="min-h-screen">
       <header
         className={cn(
-          "sticky top-0 z-40 border-b border-stone-200/80 bg-white/88 backdrop-blur-xl transition-all duration-200",
-          scrolled ? "shadow-[0_10px_30px_rgba(28,25,23,0.08)]" : "",
+          "sticky top-0 z-40 border-b border-stone-200/80 bg-white/94 backdrop-blur-xl transition-all duration-200",
+          scrolled ? "shadow-[0_8px_22px_rgba(28,25,23,0.06)]" : "",
         )}
       >
-        <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 py-4 sm:px-6 lg:px-8">
+        <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 px-4 py-3 sm:px-6 lg:px-8">
           <div
             className={cn(
-              "grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:items-center",
-              scrolled ? "lg:gap-3" : "lg:gap-5",
+              "grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:items-center",
+              scrolled ? "lg:gap-2" : "lg:gap-4",
             )}
           >
             <div className="flex items-center gap-3">
@@ -105,12 +105,12 @@ export function AppShell({
               )}
               <div className="min-w-0">
                 <Link
-                  className="block truncate text-lg font-semibold tracking-tight text-stone-950"
+                  className="block truncate text-base font-semibold tracking-tight text-stone-950 sm:text-lg"
                   href="/dashboard"
                 >
                   {organizationSettings.organization_name}
                 </Link>
-                <p className="truncate text-sm text-stone-600">
+                <p className="hidden truncate text-sm text-stone-600 xl:block">
                   {profile.role === "client"
                     ? organizationSettings.login_welcome_text
                     : organizationSettings.product_subtitle}
@@ -152,18 +152,13 @@ export function AppShell({
                   <Headset className="size-4" />
                   {organizationSettings.support_cta_text}
                 </Link>
-              ) : (
-                <span className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-dashed border-stone-300 px-2.5 text-sm text-stone-500">
-                  <LifeBuoy className="size-4" />
-                  Add support contact in setup
-                </span>
-              )}
+              ) : null}
               {profile.role === "admin" && !setupComplete ? (
                 <Link
-                  className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border px-2.5 text-sm font-medium text-stone-900 transition-colors hover:bg-white"
+                  className="inline-flex h-7 items-center justify-center gap-1.5 rounded-full border px-2.5 text-xs font-medium text-stone-900 transition-colors hover:bg-white"
                   href="/setup"
                   style={{
-                    backgroundColor: "rgb(var(--brand-accent-rgb) / 0.42)",
+                    backgroundColor: "rgb(var(--brand-accent-rgb) / 0.22)",
                     borderColor: "rgb(var(--brand-primary-rgb) / 0.12)",
                   }}
                 >
@@ -175,28 +170,11 @@ export function AppShell({
                 <div className="truncate font-medium text-stone-950">
                   {profile.full_name ?? profile.email}
                 </div>
-                <div className="truncate text-xs text-stone-500">{profile.email}</div>
+                <div className="hidden truncate text-xs text-stone-500 xl:block">{profile.email}</div>
               </div>
               <SignOutButton />
             </div>
           </div>
-          {profile.role === "admin" ? (
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-stone-200 bg-white/72 px-4 py-3 text-sm text-stone-600">
-              <div>
-                <div className="font-medium text-stone-950">
-                  {setupComplete
-                    ? "This workspace is packaged for a single nonprofit deployment."
-                    : "Finish the setup guide to turn this into a branded nonprofit workspace."}
-                </div>
-                <p className="mt-1">
-                  Keep branding, onboarding, imports, and support contact centralized so each deployment feels intentional instead of improvised.
-                </p>
-              </div>
-              <span className="text-xs font-medium uppercase tracking-[0.18em] text-stone-500">
-                Powered by CaseFlow
-              </span>
-            </div>
-          ) : null}
         </div>
       </header>
       <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-6 lg:px-8">

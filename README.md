@@ -92,6 +92,7 @@ Production notes:
 - `NEXT_PUBLIC_APP_URL` should match the deployed domain
 - `GEMINI_API_KEY` is required for semantic note search and embedding backfill
 - Google OAuth must be enabled in Supabase Auth
+- for local development, Supabase Auth allowed redirect URLs must include `http://localhost:3000/auth/callback` or Google login may bounce back to production instead of localhost
 
 ## Local development
 

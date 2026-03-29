@@ -252,7 +252,7 @@ export function OrganizationSetupForms({
       </div>
 
       <div className="space-y-6">
-        <Card className="brand-gradient border-stone-200 shadow-sm">
+        <Card className="brand-card border shadow-sm">
           <CardHeader>
             <CardTitle>Workspace preview</CardTitle>
             <CardDescription>
@@ -260,7 +260,7 @@ export function OrganizationSetupForms({
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="rounded-3xl border border-white/80 bg-white/85 p-5 shadow-sm">
+            <div className="rounded-3xl border border-stone-200 bg-white p-5 shadow-sm">
               <div className="flex items-center gap-3">
                 {organizationSettings.logo_url ? (
                   <>
@@ -293,7 +293,7 @@ export function OrganizationSetupForms({
               </div>
             </div>
 
-            <div className="rounded-3xl border border-stone-200 bg-white/90 p-5 shadow-sm">
+            <div className="rounded-3xl border border-stone-200 bg-white p-5 shadow-sm">
               <p className="text-sm font-medium uppercase tracking-[0.18em] text-stone-500">Support card preview</p>
               <p className="mt-3 text-lg font-semibold text-stone-950">{organizationSettings.support_cta_text}</p>
               <p className="mt-2 text-sm leading-6 text-stone-600">

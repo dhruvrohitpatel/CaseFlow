@@ -124,6 +124,37 @@ function revalidateBrandingSurfaces() {
   revalidatePath("/setup");
 }
 
+function getSafeAdminReturnTo(formData: FormData, fallback = "/admin") {
+  const rawPath = String(formData.get("returnTo") ?? "").trim();
+
+  if (!rawPath.startsWith("/")) {
+    return fallback;
+  }
+
+  if (
+    rawPath === "/admin" ||
+    rawPath.startsWith("/admin?") ||
+    rawPath === "/setup" ||
+    rawPath.startsWith("/setup?") ||
+    rawPath === "/dashboard/admin" ||
+    rawPath.startsWith("/dashboard/admin?")
+  ) {
+    return rawPath;
+  }
+
+  return fallback;
+}
+
+function appendRedirectParam(path: string, key: string, value: string) {
+  const [pathname, search = ""] = path.split("?");
+  const params = new URLSearchParams(search);
+  params.set(key, value);
+
+  const nextSearch = params.toString();
+
+  return nextSearch ? `${pathname}?${nextSearch}` : pathname;
+}
+
 export async function importClientsCsvAction(
   _previousState: CsvImportState,
   formData: FormData,
@@ -240,9 +271,10 @@ export async function createCustomFieldDefinitionAction(
 export async function toggleCustomFieldActiveAction(formData: FormData) {
   const definitionId = String(formData.get("definitionId") ?? "");
   const nextValue = String(formData.get("nextValue") ?? "") === "true";
+  const returnTo = getSafeAdminReturnTo(formData);
 
   if (!definitionId) {
-    redirect("/admin?error=custom-fields");
+    redirect(appendRedirectParam(returnTo, "error", "custom-fields"));
   }
 
   const { supabase } = await requireRole(["admin"]);
@@ -254,19 +286,20 @@ export async function toggleCustomFieldActiveAction(formData: FormData) {
     .eq("id", definitionId);
 
   if (error) {
-    redirect("/admin?error=custom-fields");
+    redirect(appendRedirectParam(returnTo, "error", "custom-fields"));
   }
 
   revalidatePath("/admin");
   revalidatePath("/clients/new");
-  redirect("/admin?updated=1");
+  redirect(appendRedirectParam(returnTo, "updated", "1"));
 }
 
 export async function deleteCustomFieldDefinitionAction(formData: FormData) {
   const definitionId = String(formData.get("definitionId") ?? "");
+  const returnTo = getSafeAdminReturnTo(formData);
 
   if (!definitionId) {
-    redirect("/admin?error=custom-fields");
+    redirect(appendRedirectParam(returnTo, "error", "custom-fields"));
   }
 
   const { supabase } = await requireRole(["admin"]);
@@ -276,12 +309,12 @@ export async function deleteCustomFieldDefinitionAction(formData: FormData) {
     .eq("id", definitionId);
 
   if (error) {
-    redirect("/admin?error=custom-fields");
+    redirect(appendRedirectParam(returnTo, "error", "custom-fields"));
   }
 
   revalidatePath("/admin");
   revalidatePath("/clients/new");
-  redirect("/admin?deleted=1");
+  redirect(appendRedirectParam(returnTo, "deleted", "1"));
 }
 
 export async function createAllowlistEntryAction(
@@ -391,9 +424,10 @@ export async function createAllowlistEntryAction(
 export async function toggleAllowlistEntryActiveAction(formData: FormData) {
   const entryId = String(formData.get("entryId") ?? "");
   const nextValue = String(formData.get("nextValue") ?? "") === "true";
+  const returnTo = getSafeAdminReturnTo(formData);
 
   if (!entryId) {
-    redirect("/admin?error=allowlist");
+    redirect(appendRedirectParam(returnTo, "error", "allowlist"));
   }
 
   const { supabase } = await requireRole(["admin"]);
@@ -404,7 +438,7 @@ export async function toggleAllowlistEntryActiveAction(formData: FormData) {
     .maybeSingle();
 
   if (existingEntryError) {
-    redirect("/admin?error=allowlist");
+    redirect(appendRedirectParam(returnTo, "error", "allowlist"));
   }
 
   const { error } = await supabase
@@ -415,7 +449,7 @@ export async function toggleAllowlistEntryActiveAction(formData: FormData) {
     .eq("id", entryId);
 
   if (error) {
-    redirect("/admin?error=allowlist");
+    redirect(appendRedirectParam(returnTo, "error", "allowlist"));
   }
 
   if (!nextValue && existingEntry?.role === "client" && existingEntry.linked_client_id) {
@@ -427,20 +461,21 @@ export async function toggleAllowlistEntryActiveAction(formData: FormData) {
       .eq("id", existingEntry.linked_client_id);
 
     if (clearError) {
-      redirect("/admin?error=allowlist");
+      redirect(appendRedirectParam(returnTo, "error", "allowlist"));
     }
   }
 
   revalidatePath("/admin");
   revalidatePath("/dashboard/admin");
-  redirect("/admin?accessUpdated=1");
+  redirect(appendRedirectParam(returnTo, "accessUpdated", "1"));
 }
 
 export async function deleteAllowlistEntryAction(formData: FormData) {
   const entryId = String(formData.get("entryId") ?? "");
+  const returnTo = getSafeAdminReturnTo(formData);
 
   if (!entryId) {
-    redirect("/admin?error=allowlist");
+    redirect(appendRedirectParam(returnTo, "error", "allowlist"));
   }
 
   const { supabase } = await requireRole(["admin"]);
@@ -451,7 +486,7 @@ export async function deleteAllowlistEntryAction(formData: FormData) {
     .maybeSingle();
 
   if (existingEntryError) {
-    redirect("/admin?error=allowlist");
+    redirect(appendRedirectParam(returnTo, "error", "allowlist"));
   }
 
   const { error } = await supabase
@@ -460,7 +495,7 @@ export async function deleteAllowlistEntryAction(formData: FormData) {
     .eq("id", entryId);
 
   if (error) {
-    redirect("/admin?error=allowlist");
+    redirect(appendRedirectParam(returnTo, "error", "allowlist"));
   }
 
   if (existingEntry?.role === "client" && existingEntry.linked_client_id) {
@@ -472,13 +507,13 @@ export async function deleteAllowlistEntryAction(formData: FormData) {
       .eq("id", existingEntry.linked_client_id);
 
     if (clearError) {
-      redirect("/admin?error=allowlist");
+      redirect(appendRedirectParam(returnTo, "error", "allowlist"));
     }
   }
 
   revalidatePath("/admin");
   revalidatePath("/dashboard/admin");
-  redirect("/admin?accessDeleted=1");
+  redirect(appendRedirectParam(returnTo, "accessDeleted", "1"));
 }
 
 export async function updateOrganizationBrandingAction(

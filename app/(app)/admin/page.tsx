@@ -189,7 +189,7 @@ export default async function AdminPage({
       </section>
 
       <section className="grid gap-6 xl:grid-cols-2">
-        <Card className="border-stone-200 shadow-sm">
+        <Card className="brand-card border shadow-sm">
           <CardHeader>
             <CardTitle>Approved access</CardTitle>
             <CardDescription>
@@ -200,7 +200,7 @@ export default async function AdminPage({
             {accessEntries && accessEntries.length > 0 ? (
               <div className="overflow-hidden rounded-xl border border-stone-200">
                 <Table>
-                  <TableHeader className="bg-stone-50">
+                  <TableHeader className="bg-stone-50/80">
                     <TableRow>
                       <TableHead>Email</TableHead>
                       <TableHead>Role</TableHead>
@@ -212,8 +212,12 @@ export default async function AdminPage({
                   <TableBody>
                     {accessEntries.map((entry) => (
                       <TableRow key={entry.id}>
-                        <TableCell className="text-stone-600">{entry.email}</TableCell>
-                        <TableCell className="capitalize text-stone-600">{entry.role}</TableCell>
+                        <TableCell className="max-w-[16rem] truncate text-stone-700">{entry.email}</TableCell>
+                        <TableCell>
+                          <Badge className="capitalize" variant="outline">
+                            {entry.role}
+                          </Badge>
+                        </TableCell>
                         <TableCell>
                           {entry.linked_client_id ? (
                             <span className="text-sm text-stone-600">
@@ -224,7 +228,10 @@ export default async function AdminPage({
                           )}
                         </TableCell>
                         <TableCell>
-                          <Badge variant={entry.is_active ? "secondary" : "outline"}>
+                          <Badge
+                            className={entry.is_active ? "border-emerald-200 bg-emerald-50 text-emerald-700" : ""}
+                            variant={entry.is_active ? "outline" : "outline"}
+                          >
                             {entry.is_active ? "Active" : "Inactive"}
                           </Badge>
                         </TableCell>
@@ -233,13 +240,15 @@ export default async function AdminPage({
                             <form action={toggleAllowlistEntryActiveAction}>
                               <input name="entryId" type="hidden" value={entry.id} />
                               <input name="nextValue" type="hidden" value={String(!entry.is_active)} />
-                              <Button type="submit" variant="outline">
+                              <input name="returnTo" type="hidden" value="/admin" />
+                              <Button size="sm" type="submit" variant="outline">
                                 {entry.is_active ? "Deactivate" : "Activate"}
                               </Button>
                             </form>
                             <form action={deleteAllowlistEntryAction}>
                               <input name="entryId" type="hidden" value={entry.id} />
-                              <Button type="submit" variant="ghost">
+                              <input name="returnTo" type="hidden" value="/admin" />
+                              <Button className="text-red-700 hover:bg-red-50 hover:text-red-800" size="sm" type="submit" variant="ghost">
                                 Remove
                               </Button>
                             </form>
@@ -258,7 +267,7 @@ export default async function AdminPage({
           </CardContent>
         </Card>
 
-        <Card className="border-stone-200 shadow-sm">
+        <Card className="brand-card border shadow-sm">
           <CardHeader>
             <CardTitle>Current client portal links</CardTitle>
             <CardDescription>
@@ -303,7 +312,7 @@ export default async function AdminPage({
         </Card>
       </section>
 
-      <Card className="border-stone-200 shadow-sm">
+      <Card className="brand-card border shadow-sm">
         <CardHeader>
           <CardTitle>Configured fields</CardTitle>
           <CardDescription>
@@ -338,7 +347,10 @@ export default async function AdminPage({
                         {definition.field_type}
                       </TableCell>
                       <TableCell>
-                        <Badge variant={definition.is_active ? "secondary" : "outline"}>
+                        <Badge
+                          className={definition.is_active ? "border-emerald-200 bg-emerald-50 text-emerald-700" : ""}
+                          variant="outline"
+                        >
                           {definition.is_active ? "Active" : "Inactive"}
                         </Badge>
                       </TableCell>
@@ -348,13 +360,15 @@ export default async function AdminPage({
                           <form action={toggleCustomFieldActiveAction}>
                             <input name="definitionId" type="hidden" value={definition.id} />
                             <input name="nextValue" type="hidden" value={String(!definition.is_active)} />
-                            <Button type="submit" variant="outline">
+                            <input name="returnTo" type="hidden" value="/admin" />
+                            <Button size="sm" type="submit" variant="outline">
                               {definition.is_active ? "Disable" : "Enable"}
                             </Button>
                           </form>
                           <form action={deleteCustomFieldDefinitionAction}>
                             <input name="definitionId" type="hidden" value={definition.id} />
-                            <Button type="submit" variant="ghost">
+                            <input name="returnTo" type="hidden" value="/admin" />
+                            <Button className="text-red-700 hover:bg-red-50 hover:text-red-800" size="sm" type="submit" variant="ghost">
                               Remove
                             </Button>
                           </form>
@@ -373,7 +387,7 @@ export default async function AdminPage({
         </CardContent>
       </Card>
 
-      <Card className="border-stone-200 shadow-sm">
+      <Card className="brand-card border shadow-sm">
         <CardHeader>
           <CardTitle>Audit log</CardTitle>
           <CardDescription>

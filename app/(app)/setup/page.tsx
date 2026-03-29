@@ -46,14 +46,14 @@ export default async function SetupPage({ searchParams }: SetupPageProps) {
         </div>
       ) : null}
 
-      <Card className="brand-gradient border-stone-200 shadow-sm">
+      <Card className="brand-card border shadow-sm">
         <CardHeader>
-          <CardTitle className="text-3xl">Launch this workspace like a product.</CardTitle>
-          <CardDescription className="max-w-3xl text-base leading-7 text-stone-600">
-            This setup guide turns the current deployment into a branded, nonprofit-specific workspace. Once branding, support details, access rules, and starter data are reviewed, your team can operate from the admin dashboard instead of tinkering with raw configuration.
+          <CardTitle className="text-2xl">Setup guide</CardTitle>
+          <CardDescription className="max-w-3xl text-sm leading-6 text-stone-600">
+            Finish branding, support details, access review, and starter-data planning so this deployment feels ready for a real nonprofit team instead of a half-configured workspace.
           </CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-wrap items-center gap-3">
+        <CardContent className="flex flex-wrap items-center gap-2">
           <div className="rounded-full border border-stone-200 bg-white/85 px-4 py-2 text-sm font-medium text-stone-950">
             Signed in as {profile.full_name ?? profile.email}
           </div>

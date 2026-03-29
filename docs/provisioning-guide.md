@@ -26,6 +26,7 @@ Use this when standing up a new nonprofit deployment of CaseFlow.
 - Allowed redirect URLs in Supabase:
   - `http://localhost:3000/auth/callback`
   - `https://<your-domain>/auth/callback`
+- Keep local and production callbacks both present. If local login returns to a Vercel domain, Supabase Auth or the project site URL is still favoring production instead of the localhost callback.
 
 ## Handoff checklist
 

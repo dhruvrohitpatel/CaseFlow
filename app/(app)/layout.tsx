@@ -20,8 +20,10 @@ export default async function ProtectedLayout({
   const pathname = requestHeaders.get("x-pathname") ?? "";
   const setupComplete = isSetupComplete(settings);
   const isSetupRoute = pathname.startsWith("/setup");
+  const isAdminSafeRoute =
+    pathname.startsWith("/admin") || pathname.startsWith("/dashboard/admin");
 
-  if (profile.role === "admin" && !setupComplete && !isSetupRoute) {
+  if (profile.role === "admin" && !setupComplete && !isSetupRoute && !isAdminSafeRoute) {
     redirect("/setup");
   }
 

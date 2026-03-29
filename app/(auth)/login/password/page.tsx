@@ -41,7 +41,7 @@ export default async function PasswordLoginPage({
   return (
     <div className="flex min-h-screen items-center justify-center px-4 py-10">
       <div className="grid w-full max-w-6xl gap-6 lg:grid-cols-[1.05fr_0.95fr]">
-        <Card className="brand-gradient border-stone-200 shadow-sm">
+        <Card className="brand-card border shadow-sm">
           <CardContent className="flex h-full flex-col justify-between gap-8 p-8 lg:p-10">
             <div className="space-y-4">
               <p className="text-sm font-medium uppercase tracking-[0.2em] text-stone-500">
