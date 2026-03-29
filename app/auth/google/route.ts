@@ -1,11 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-import { getAppUrl } from "@/lib/env";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export async function GET(request: NextRequest) {
-  const appUrl = getAppUrl();
   const requestUrl = new URL(request.url);
+  const appUrl = requestUrl.origin;
   const next = requestUrl.searchParams.get("next");
   const nextPath = next?.startsWith("/") ? next : "/dashboard";
   const callbackUrl = new URL("/auth/callback", appUrl);

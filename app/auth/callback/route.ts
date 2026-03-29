@@ -1,12 +1,11 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { AccessNotApprovedError, syncUserAccessFromAllowlist } from "@/lib/access-allowlist";
-import { getAppUrl } from "@/lib/env";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export async function GET(request: NextRequest) {
-  const appUrl = getAppUrl();
   const requestUrl = new URL(request.url);
+  const appUrl = requestUrl.origin;
   const code = requestUrl.searchParams.get("code");
   const next = requestUrl.searchParams.get("next");
   const nextPath = next?.startsWith("/") ? next : "/dashboard";
