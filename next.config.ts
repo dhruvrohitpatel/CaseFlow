@@ -32,6 +32,13 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  experimental: {
+    // The dashboard editor and photo intake flows can exceed Next's 1 MB default
+    // server-action limit even though they are valid app-level requests.
+    serverActions: {
+      bodySizeLimit: "8mb",
+    },
+  },
   async headers() {
     return [
       {
