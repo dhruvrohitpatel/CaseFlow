@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { endOfMonth, endOfQuarter, endOfWeek, format, startOfMonth, startOfQuarter, startOfToday, startOfWeek } from "date-fns";
 
+import { PageErrorState } from "@/components/ui/page-error-state";
 import { getPortalClientForCurrentUser, requireAppSession } from "@/lib/auth";
 
 type ExplorePageProps = {
@@ -142,7 +143,17 @@ export default async function DashboardExplorePage({
     const { data, error } = await query;
 
     if (error) {
-      throw new Error(error.message);
+      return (
+        <div className="space-y-6">
+          <div>
+            <h1 className="text-3xl font-semibold tracking-tight text-stone-950">Explore clients</h1>
+            <p className="mt-2 text-sm text-stone-600">
+              Filter: {dimension && value ? `${dimension} = ${value}` : "all clients"}
+            </p>
+          </div>
+          <PageErrorState description={error.message} title="The client detail view is unavailable." />
+        </div>
+      );
     }
 
     return (
@@ -198,7 +209,17 @@ export default async function DashboardExplorePage({
     const { data, error } = await query;
 
     if (error) {
-      throw new Error(error.message);
+      return (
+        <div className="space-y-6">
+          <div>
+            <h1 className="text-3xl font-semibold tracking-tight text-stone-950">Explore appointments</h1>
+            <p className="mt-2 text-sm text-stone-600">
+              Filter: {dimension && value ? `${dimension} = ${value}` : "all visible appointments"}
+            </p>
+          </div>
+          <PageErrorState description={error.message} title="The appointment detail view is unavailable." />
+        </div>
+      );
     }
 
     return (
@@ -257,7 +278,14 @@ export default async function DashboardExplorePage({
     const { data, error } = await query;
 
     if (error) {
-      throw new Error(error.message);
+      return (
+        <div className="space-y-6">
+          <div>
+            <h1 className="text-3xl font-semibold tracking-tight text-stone-950">Explore approved access</h1>
+          </div>
+          <PageErrorState description={error.message} title="The approved access detail view is unavailable." />
+        </div>
+      );
     }
 
     return (
@@ -312,7 +340,17 @@ export default async function DashboardExplorePage({
   const { data, error } = await serviceQuery;
 
   if (error) {
-    throw new Error(error.message);
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-semibold tracking-tight text-stone-950">Explore service activity</h1>
+          <p className="mt-2 text-sm text-stone-600">
+            Filter: {dimension && value ? `${dimension} = ${value}` : "all visible service activity"}
+          </p>
+        </div>
+        <PageErrorState description={error.message} title="The service detail view is unavailable." />
+      </div>
+    );
   }
 
   return (

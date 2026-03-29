@@ -4,6 +4,8 @@ import {
   analyzeImportAssistantAction,
   confirmImportAssistantAction,
 } from "@/app/actions/import-assistant";
+import { ImportAssistantAnalyzeForm } from "@/components/forms/import-assistant-analyze-form";
+import { PageErrorState } from "@/components/ui/page-error-state";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -52,27 +54,26 @@ export default async function ImportAssistantPage({
   const params = await searchParams;
   const supabase = createSupabaseAdminClient();
   const sessionId = params.session?.trim() || null;
-  const [{ data: currentSession }, { data: recentSessions, error: recentError }] =
-    await Promise.all([
-      sessionId
-        ? supabase
-            .from("import_assistant_sessions")
-            .select("*")
-            .eq("id", sessionId)
-            .maybeSingle()
-        : Promise.resolve({ data: null }),
-      supabase
-        .from("import_assistant_sessions")
-        .select("id, source_filename, target_entity, status, created_at")
-        .order("created_at", { ascending: false })
-        .limit(5),
-    ]);
-
-  if (recentError) {
-    throw new Error(recentError.message);
-  }
+  const [
+    { data: currentSession, error: currentSessionError },
+    { data: recentSessions, error: recentError },
+  ] = await Promise.all([
+    sessionId
+      ? supabase
+          .from("import_assistant_sessions")
+          .select("*")
+          .eq("id", sessionId)
+          .maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
+    supabase
+      .from("import_assistant_sessions")
+      .select("id, source_filename, target_entity, status, created_at")
+      .order("created_at", { ascending: false })
+      .limit(5),
+  ]);
 
   const errorMessage = resolveError(params.error, params.message);
+  const pageErrorMessage = recentError?.message ?? currentSessionError?.message ?? null;
   const previewRows = Array.isArray(currentSession?.preview_rows)
     ? (currentSession.preview_rows as Array<Record<string, string | null>>).slice(0, 10)
     : [];
@@ -94,6 +95,9 @@ export default async function ImportAssistantPage({
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {errorMessage}
         </div>
+      ) : null}
+      {pageErrorMessage ? (
+        <PageErrorState description={pageErrorMessage} title="Some import assistant data could not be loaded." />
       ) : null}
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -136,13 +140,7 @@ export default async function ImportAssistantPage({
           </CardHeader>
           <CardContent>
             {adminAi.enabled ? (
-              <form action={analyzeImportAssistantAction} className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-stone-950" htmlFor="csvFile">CSV file</label>
-                  <input accept=".csv,text/csv" className="block w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm text-stone-950" id="csvFile" name="csvFile" type="file" />
-                </div>
-                <Button type="submit">Analyze file</Button>
-              </form>
+              <ImportAssistantAnalyzeForm action={analyzeImportAssistantAction} />
             ) : (
               <div className="rounded-2xl border border-dashed border-stone-300 bg-[rgb(var(--brand-surface-rgb)/0.42)] px-5 py-6 text-sm text-stone-600">
                 AI-assisted CSV mapping is optional. Use the sample files on this page as the standard format for manual preparation, then return when premium admin AI is enabled.

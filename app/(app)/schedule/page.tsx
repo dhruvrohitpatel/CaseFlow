@@ -6,6 +6,7 @@ import { CreateAppointmentForm } from "@/components/forms/create-appointment-for
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageErrorState } from "@/components/ui/page-error-state";
 import { requireRole } from "@/lib/auth";
 import { getUpcomingAppointments } from "@/lib/appointments";
 
@@ -20,9 +21,14 @@ export default async function SchedulePage({
   searchParams,
 }: SchedulePageProps) {
   const { supabase } = await requireRole(["admin", "staff"]);
-  const [{ today, thisWeek }, { data: clients, error: clientsError }, params] =
+  const [appointmentsResult, { data: clients, error: clientsError }, params] =
     await Promise.all([
-      getUpcomingAppointments(supabase),
+      getUpcomingAppointments(supabase)
+        .then((data) => ({ data, error: null }))
+        .catch((error: unknown) => ({
+          data: { thisWeek: [], today: [] },
+          error: error instanceof Error ? error.message : "Schedule data could not be loaded.",
+        })),
       supabase
         .from("clients")
         .select("id, client_id, full_name")
@@ -30,10 +36,9 @@ export default async function SchedulePage({
         .order("full_name", { ascending: true }),
       searchParams,
     ]);
-
-  if (clientsError) {
-    throw new Error(clientsError.message);
-  }
+  const today = appointmentsResult.data.today;
+  const thisWeek = appointmentsResult.data.thisWeek;
+  const pageError = appointmentsResult.error ?? clientsError?.message ?? null;
 
   return (
     <div className="space-y-6">
@@ -47,6 +52,9 @@ export default async function SchedulePage({
           We could not delete that appointment. Try again.
         </div>
       ) : null}
+      {pageError ? (
+        <PageErrorState description={pageError} title="Part of the schedule is unavailable." />
+      ) : null}
 
       <div>
         <h1 className="text-3xl font-semibold tracking-tight text-stone-950">Schedule</h1>
@@ -58,10 +66,10 @@ export default async function SchedulePage({
       <section className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
         <CreateAppointmentForm
           clients={
-            clients?.map((client) => ({
+            (clients ?? []).map((client) => ({
               id: client.id,
               label: `${client.full_name} (${client.client_id})`,
-            })) ?? []
+            }))
           }
         />
 

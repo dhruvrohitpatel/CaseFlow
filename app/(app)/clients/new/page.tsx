@@ -2,6 +2,7 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
 import { CreateClientForm } from "@/components/forms/create-client-form";
+import { PageErrorState } from "@/components/ui/page-error-state";
 import { getAiFeatureState } from "@/lib/ai/capabilities";
 import { getActiveCustomFieldDefinitions } from "@/lib/custom-fields";
 import { requireRole } from "@/lib/auth";
@@ -24,13 +25,23 @@ export default async function NewClientPage({
     requireRole(["admin", "staff"]),
     searchParams,
   ]);
-  const customFieldDefinitions = await getActiveCustomFieldDefinitions(
+  const customFieldDefinitionsResult = await getActiveCustomFieldDefinitions(
     supabase,
     "client",
-  );
+  )
+    .then((data) => ({ data, error: null }))
+    .catch((error: unknown) => ({
+      data: [],
+      error:
+        error instanceof Error
+          ? error.message
+          : "Client field definitions could not be loaded.",
+    }));
+  const customFieldDefinitions = customFieldDefinitionsResult.data;
   const adminAi = getAiFeatureState("admin_ai");
   const intakeSessionId = params.intake?.trim() || null;
   const adminSupabase = createSupabaseAdminClient();
+  let pageError = customFieldDefinitionsResult.error;
   let intakeSession: {
     confidence: {
       core: Record<string, string>;
@@ -45,16 +56,24 @@ export default async function NewClientPage({
   } | null = null;
 
   if (intakeSessionId) {
-    const { data } = await adminSupabase
+    const { data, error } = await adminSupabase
       .from("intake_capture_sessions")
       .select("*")
       .eq("id", intakeSessionId)
       .maybeSingle();
 
+    if (error && !pageError) {
+      pageError = error.message;
+    }
+
     if (data && (profile.role === "admin" || data.created_by === profile.id)) {
-      const { data: signedUrl } = await adminSupabase.storage
+      const { data: signedUrl, error: signedUrlError } = await adminSupabase.storage
         .from("intake-source-images")
         .createSignedUrl(data.source_image_path, 60 * 30);
+
+      if (signedUrlError && !pageError) {
+        pageError = signedUrlError.message;
+      }
       const extractedCustomValues = Array.isArray(data.custom_fields_json)
         ? (data.custom_fields_json as Array<{
             definitionId?: string;
@@ -107,6 +126,9 @@ export default async function NewClientPage({
 
   return (
       <div className="space-y-6">
+      {pageError ? (
+        <PageErrorState description={pageError} title="Part of the intake form is unavailable." />
+      ) : null}
       {params.discarded === "1" ? (
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
           Intake photo session discarded.
