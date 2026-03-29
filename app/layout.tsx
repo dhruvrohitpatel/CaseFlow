@@ -1,6 +1,8 @@
 import type { CSSProperties } from "react";
 import type { Metadata } from "next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
+import { getSpeedInsightsConfig } from "@/lib/observability";
 import { getOrganizationSettings, getThemeCssVariables } from "@/lib/organization-settings";
 import "./globals.css";
 
@@ -29,11 +31,15 @@ export default async function RootLayout({
 }>) {
   const settings = await getOrganizationSettings();
   const themeStyle = getThemeCssVariables(settings) as CSSProperties;
+  const speedInsights = getSpeedInsightsConfig();
 
   return (
     <html lang="en" className="h-full antialiased">
       <body className="min-h-full bg-background text-foreground flex flex-col" style={themeStyle}>
         {children}
+        {speedInsights.enabled ? (
+          <SpeedInsights sampleRate={speedInsights.sampleRate} />
+        ) : null}
       </body>
     </html>
   );

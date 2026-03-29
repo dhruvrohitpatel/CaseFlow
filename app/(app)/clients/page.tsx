@@ -3,6 +3,7 @@ import { Search, UserRoundPlus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageErrorState } from "@/components/ui/page-error-state";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireRole } from "@/lib/auth";
 
@@ -33,10 +34,6 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
 
   const { data: clients, error } = await clientQuery;
 
-  if (error) {
-    throw new Error(error.message);
-  }
-
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -60,6 +57,9 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {error ? (
+            <PageErrorState description={error.message} title="The client directory could not be loaded." />
+          ) : null}
           <form className="flex flex-col gap-3 sm:flex-row" method="get">
             <div className="relative flex-1">
               <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-stone-400" />
@@ -75,7 +75,7 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
             </Button>
           </form>
 
-          {clients && clients.length > 0 ? (
+          {!error && clients && clients.length > 0 ? (
             <div className="overflow-hidden rounded-xl border border-stone-200">
               <Table>
                 <TableHeader className="bg-stone-50">
@@ -108,7 +108,7 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
                 </TableBody>
               </Table>
             </div>
-          ) : (
+          ) : !error ? (
             <div className="rounded-2xl border border-dashed border-stone-300 bg-stone-50 px-6 py-12 text-center">
               <p className="text-base font-medium text-stone-900">
                 {query ? "No clients matched that search." : "No clients have been added yet."}
@@ -119,7 +119,7 @@ export default async function ClientsPage({ searchParams }: ClientsPageProps) {
                   : "Create the first client record to get the directory started."}
               </p>
             </div>
-          )}
+          ) : null}
         </CardContent>
       </Card>
     </div>

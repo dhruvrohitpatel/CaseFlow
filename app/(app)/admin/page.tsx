@@ -15,6 +15,7 @@ import { CustomFieldDefinitionForm } from "@/components/forms/custom-field-defin
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageErrorState } from "@/components/ui/page-error-state";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { getAllCustomFieldDefinitions } from "@/lib/custom-fields";
 import { requireRole } from "@/lib/auth";
@@ -57,9 +58,23 @@ export default async function AdminPage({
     auditQuery = auditQuery.eq("entity_type", entityFilter);
   }
 
-  const [definitions, settings, { data: auditLogs, error: auditError }] = await Promise.all([
-    getAllCustomFieldDefinitions(supabase),
-    getOrganizationSettings(),
+  const [definitionsResult, settingsResult, { data: auditLogs, error: auditError }] = await Promise.all([
+    getAllCustomFieldDefinitions(supabase)
+      .then((data) => ({ data, error: null }))
+      .catch((error: unknown) => ({
+        data: [],
+        error:
+          error instanceof Error
+            ? error.message
+            : "Custom field definitions could not be loaded.",
+      })),
+    getOrganizationSettings()
+      .then((data) => ({ data, error: null }))
+      .catch((error: unknown) => ({
+        data: null,
+        error:
+          error instanceof Error ? error.message : "Workspace settings could not be loaded.",
+      })),
     auditQuery,
   ]);
 
@@ -78,13 +93,15 @@ export default async function AdminPage({
       .order("full_name", { ascending: true }),
   ]);
 
-  if (auditError || accessEntriesError || clientsError) {
-    throw new Error(
-      auditError?.message ??
-        accessEntriesError?.message ??
-        clientsError?.message,
-    );
-  }
+  const pageError =
+    settingsResult.error ??
+    definitionsResult.error ??
+    auditError?.message ??
+    accessEntriesError?.message ??
+    clientsError?.message ??
+    null;
+  const definitions = definitionsResult.data;
+  const settings = settingsResult.data;
 
   const clientLabelById = new Map(
     (clients ?? []).map((client) => [client.id, `${client.full_name} (${client.client_id})`]),
@@ -101,7 +118,7 @@ export default async function AdminPage({
         id: client.id,
         label: `${client.full_name} (${client.client_id})`,
       })) ?? [];
-  const setupComplete = isSetupComplete(settings);
+  const setupComplete = settings ? isSetupComplete(settings) : false;
 
   return (
     <div className="space-y-6">
@@ -134,6 +151,9 @@ export default async function AdminPage({
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           We could not update that approved access entry. Try again.
         </div>
+      ) : null}
+      {pageError ? (
+        <PageErrorState description={pageError} title="Some admin data is unavailable." />
       ) : null}
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -171,13 +191,15 @@ export default async function AdminPage({
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-[1fr_auto_auto] md:items-center">
           <div>
-            <div className="text-lg font-semibold text-stone-950">{settings.organization_name}</div>
-            <p className="mt-1 text-sm text-stone-600">{settings.product_subtitle}</p>
+            <div className="text-lg font-semibold text-stone-950">
+              {settings?.organization_name ?? "Workspace profile"}
+            </div>
+            <p className="mt-1 text-sm text-stone-600">{settings?.product_subtitle ?? "Workspace details are temporarily unavailable."}</p>
             <p className="mt-2 text-sm text-stone-500">
-              Support contact: {settings.support_email ?? settings.support_phone ?? "Not configured yet"}
+              Support contact: {settings?.support_email ?? settings?.support_phone ?? "Not configured yet"}
             </p>
             <p className="mt-1 text-sm text-stone-500">
-              Theme mode: {settings.theme_preset_key}
+              Theme mode: {settings?.theme_preset_key ?? "Unavailable"}
             </p>
           </div>
           <Badge className="brand-chip border-0">{setupComplete ? "Launch ready" : "Setup in progress"}</Badge>

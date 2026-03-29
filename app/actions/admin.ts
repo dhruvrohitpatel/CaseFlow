@@ -17,6 +17,7 @@ import {
 import { parseClientCsvImport } from "@/lib/csv";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getThemePreset, themePresetKeySchema } from "@/lib/theme-presets";
+import { BRANDING_ASSET_UPLOAD_RULE, CSV_UPLOAD_RULE, validateUploadFile } from "@/lib/uploads";
 import { createAccessAllowlistEntrySchema } from "@/lib/validators/access-allowlist";
 import {
   type SetupProgress,
@@ -85,14 +86,13 @@ async function getOrganizationSettingsRow() {
 }
 
 async function uploadBrandAsset(file: File, prefix: "logo" | "favicon") {
-  const allowedTypes = new Set(["image/png", "image/jpeg", "image/webp", "image/svg+xml", "image/x-icon"]);
+  const validationError = validateUploadFile(file, BRANDING_ASSET_UPLOAD_RULE);
 
-  if (!allowedTypes.has(file.type)) {
-    throw new Error("Upload a PNG, JPG, WEBP, SVG, or ICO file.");
-  }
-
-  if (file.size > 2 * 1024 * 1024) {
-    throw new Error("Keep branding files under 2 MB.");
+  if (validationError) {
+    return {
+      error: validationError,
+      publicUrl: null,
+    };
   }
 
   const extension = file.name.includes(".") ? file.name.split(".").pop()?.toLowerCase() : undefined;
@@ -108,12 +108,18 @@ async function uploadBrandAsset(file: File, prefix: "logo" | "favicon") {
     });
 
   if (error) {
-    throw new Error(error.message);
+    return {
+      error: "We could not upload that branding file. Try again.",
+      publicUrl: null,
+    };
   }
 
   const { data } = supabase.storage.from(BRANDING_BUCKET).getPublicUrl(path);
 
-  return data.publicUrl;
+  return {
+    error: null,
+    publicUrl: data.publicUrl,
+  };
 }
 
 function revalidateBrandingSurfaces() {
@@ -169,6 +175,15 @@ export async function importClientsCsvAction(
   if (!(file instanceof File) || file.size === 0) {
     return {
       message: "Choose a CSV file to import.",
+      status: "error",
+    };
+  }
+
+  const fileValidationError = validateUploadFile(file, CSV_UPLOAD_RULE);
+
+  if (fileValidationError) {
+    return {
+      message: fileValidationError,
       status: "error",
     };
   }
@@ -558,12 +573,30 @@ export async function updateOrganizationBrandingAction(
 
     const logoFile = formData.get("logoFile");
     if (logoFile instanceof File && logoFile.size > 0) {
-      logoUrl = await uploadBrandAsset(logoFile, "logo");
+      const uploadResult = await uploadBrandAsset(logoFile, "logo");
+
+      if (uploadResult.error || !uploadResult.publicUrl) {
+        return {
+          message: uploadResult.error ?? "We could not upload that logo file.",
+          status: "error",
+        };
+      }
+
+      logoUrl = uploadResult.publicUrl;
     }
 
     const faviconFile = formData.get("faviconFile");
     if (faviconFile instanceof File && faviconFile.size > 0) {
-      faviconUrl = await uploadBrandAsset(faviconFile, "favicon");
+      const uploadResult = await uploadBrandAsset(faviconFile, "favicon");
+
+      if (uploadResult.error || !uploadResult.publicUrl) {
+        return {
+          message: uploadResult.error ?? "We could not upload that favicon file.",
+          status: "error",
+        };
+      }
+
+      faviconUrl = uploadResult.publicUrl;
     }
 
     const currentProgress = normalizeSetupProgress(settings.setup_progress);
